@@ -35,6 +35,7 @@ class TransformerEncoder(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
+        x = x.to(self.embedding.weight.device) # Update: Fixed error causing uneven distributions of tensors on cuda and CPU
         x = self.embedding(x)
         x = self.pos_encoding(x)
         x = self.dropout(x)
@@ -55,7 +56,9 @@ class Zephyra(nn.Module):
 
     def generate(self, start_tokens, max_length, temperature=1.0):
         self.eval()
-        current_tokens = start_tokens.clone()
+        device = next(self.parameters()).device  # Update: Fixed error causing uneven distributions of tensors on cuda and CPU
+        current_tokens = start_tokens.to(device)
+
 
         with torch.no_grad():
             for _ in range(max_length - len(start_tokens)):
@@ -70,6 +73,7 @@ class Zephyra(nn.Module):
         return current_tokens
 
     def generate_answer(self, question, tokenizer, max_length=100, temperature=0.7):
+        device = next(self.parameters()).device  # Get the device of the model
         question_tokens = torch.tensor(tokenizer.encode("Question: " + question + " Answer:")).unsqueeze(0)
         generated_tokens = self.generate(question_tokens, max_length, temperature)
         return tokenizer.decode(generated_tokens[0].tolist()).split("Answer:", 1)[1].strip()

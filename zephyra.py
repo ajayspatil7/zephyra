@@ -17,23 +17,8 @@ from trainingSamplesBuilder import QADataset
 import logging
 
 
-
-
 logging.info('(Step 0)  : All dependencies import complete')
 time.sleep(3.0)
-
-# def train(model, dataloader, optimizer, criterion, device):
-#     model.train()
-#     total_loss = 0
-#     for batch, (x, y) in enumerate(dataloader):
-#         x, y = x.to(device), y.to(device)
-#         optimizer.zero_grad()
-#         output = model(x)
-#         loss = criterion(output.view(-1, output.size(-1)), y.view(-1))
-#         loss.backward()
-#         optimizer.step()
-#         total_loss += loss.item()
-#     return total_loss / len(dataloader)
 
 
 def main():

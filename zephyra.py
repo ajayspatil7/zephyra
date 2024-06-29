@@ -2,8 +2,21 @@ import logging
 import sys
 # Configuring the logger
 logging.basicConfig(level=logging.INFO, format=('%(asctime)s - %(levelname)s - %(message)s'), datefmt='%Y-%m-%d %I:%M:%S %p', filename='./zephyra.log')
-
 logging.info(f'(Step -1) : {sys.argv[0]} scripted started running')
+
+
+# Create a separate logger for technical details
+technical_logger = logging.getLogger('technical_logger')
+
+# Set the level to DEBUG to capture detailed logs
+technical_logger.setLevel(logging.INFO)
+
+# Add a file handler for the technical log
+tech_handler = logging.FileHandler('./zephyraScientific.log', mode='w')
+tech_handler.setLevel(logging.INFO)
+tech_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s - %(args)s - %(kwargs)s')
+tech_handler.setFormatter(tech_formatter)
+technical_logger.addHandler(tech_handler)
 
 import torch
 import torch.nn as nn
@@ -32,6 +45,8 @@ def main():
     epochs = 10
     lr = 0.001
 
+    technical_logger.info("Hyperparameters: ", embed_dim, num_heads, ff_dim, num_layers)
+
     logging.info("(Step 1)  : Tokeniser Loaded...")
     # Load tokenizer
     tokenizer = create_tokenizer('./cleanData.txt')
@@ -49,6 +64,7 @@ def main():
     # Initialize model
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = Zephyra(tokenizer.vocab_size, embed_dim, num_heads, ff_dim, num_layers).to(device)
+    
     logging.info(f"(Step 6)  : Zephyra model loaded on {device}")
 
 
@@ -84,5 +100,7 @@ def main():
 if __name__ == "__main__":
     main()
 
+    
+    
 
 """<-----------End of zephyra.py----------->"""

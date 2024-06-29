@@ -1,22 +1,4 @@
-2024-06-29 07:34:12 PM - INFO - (Step -1) : zephyra.py scripted started running
-2024-06-29 07:34:15 PM - INFO - (Step 0)  : All dependencies import complete
-2024-06-29 07:34:18 PM - INFO - (Step 1)  : Tokeniser Loaded...
-2024-06-29 07:34:18 PM - INFO - (Step 2)  : Tokenisation Complete...
-2024-06-29 07:34:18 PM - INFO - (Step 3)  : Dataset builder Loaded...
-2024-06-29 07:34:18 PM - INFO - (Step 4)  : Dataset builder Complete...
-2024-06-29 07:34:18 PM - INFO - (Step 5)  : Loading model
-2024-06-29 07:34:18 PM - INFO - (Step 6)  : Zephyra model loaded on cpu
-2024-06-29 07:34:19 PM - INFO - (Step 7)  : Zephyra training started on a cpu
-2024-06-29 07:34:19 PM - INFO - ----------------------------------------------------------------------------------------------------
-
-2024-06-29 07:34:31 PM - INFO - (Step -1) : zephyra.py scripted started running
-2024-06-29 07:34:34 PM - INFO - (Step 0)  : All dependencies import complete
-2024-06-29 07:34:37 PM - INFO - (Step 1)  : Tokeniser Loaded...
-2024-06-29 07:34:37 PM - INFO - (Step 2)  : Tokenisation Complete...
-2024-06-29 07:34:37 PM - INFO - (Step 3)  : Dataset builder Loaded...
-2024-06-29 07:34:37 PM - INFO - (Step 4)  : Dataset builder Complete...
-2024-06-29 07:34:37 PM - INFO - (Step 5)  : Loading model
-2024-06-29 07:34:37 PM - INFO - (Step 6)  : Zephyra model loaded on cpu
-2024-06-29 07:34:38 PM - INFO - (Step 7)  : Zephyra training started on a cpu
-2024-06-29 07:34:38 PM - INFO - ----------------------------------------------------------------------------------------------------
-
+2024-06-30 01:01:31 AM - INFO - (Step -1) : zephyra.py scripted started running
+2024-06-30 01:01:33 AM - INFO - (Step 0)  : All dependencies import complete
+2024-06-30 01:01:37 AM - INFO - (Step -1) : zephyra.py scripted started running
+2024-06-30 01:01:39 AM - INFO - (Step 0)  : All dependencies import complete

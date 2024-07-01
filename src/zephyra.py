@@ -31,17 +31,17 @@ def main():
     epochs = 10
     lr = 0.001
 
-    technical_logger.info("Hyperparameters: ", embed_dim, num_heads, ff_dim, num_layers)
+    training_data = '../data/train.txt'
 
     logging.info("(Step 1)  : Tokeniser Loaded...")
     # Load tokenizer
-    tokenizer = create_tokenizer('./cleanData.txt')
+    tokenizer = create_tokenizer(training_data)
     logging.info("(Step 2)  : Tokenisation Complete...")
 
 
     logging.info("(Step 3)  : Dataset builder Loaded...")
     # Load dataset and dataloader
-    dataset = QADataset('./cleanData.txt', tokenizer, seq_len)
+    dataset = QADataset(training_data, tokenizer, seq_len)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
     logging.info("(Step 4)  : Dataset builder Complete...")
 

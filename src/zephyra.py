@@ -4,20 +4,6 @@ import sys
 logging.basicConfig(level=logging.INFO, format=('%(asctime)s - %(levelname)s - %(message)s'), datefmt='%Y-%m-%d %I:%M:%S %p', filename='./zephyra.log')
 logging.info(f'(Step -1) : {sys.argv[0]} scripted started running')
 
-
-# Create a separate logger for technical details
-technical_logger = logging.getLogger('technical_logger')
-
-# Set the level to DEBUG to capture detailed logs
-technical_logger.setLevel(logging.INFO)
-
-# Add a file handler for the technical log
-tech_handler = logging.FileHandler('./zephyraScientific.log', mode='w')
-tech_handler.setLevel(logging.INFO)
-tech_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s - %(args)s - %(kwargs)s')
-tech_handler.setFormatter(tech_formatter)
-technical_logger.addHandler(tech_handler)
-
 import torch
 import torch.nn as nn
 import torch.optim as optim

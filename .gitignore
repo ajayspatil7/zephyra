@@ -10,3 +10,7 @@ todo.py
 .DS_Store
 experiments/.DS_Store
 experiments/__pycache__/matmulCPP.cpython-312.pyc
+.vscode/c_cpp_properties.json
+.vscode/launch.json
+.vscode/settings.json
+.vscode/tasks.json

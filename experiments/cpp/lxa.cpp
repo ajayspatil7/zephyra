@@ -31,6 +31,6 @@ std::vector<std::vector<double>> matmul(const std::vector<std::vector<double>>& 
 }
 
 PYBIND11_MODULE(lxa, m) {
-    m.doc() = "A linear algebra module for python written in C++"; // optional module docstring
+    m.doc() = "A linear algebra module for python written in C++ currently with matmul() operation only"; // optional module docstring
     m.def("matmul", &matmul, "A function that multiplies two matrices");
 }

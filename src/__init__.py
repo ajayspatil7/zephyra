@@ -1,16 +1,16 @@
 # __init__.py
 
-from .attention import MultiHeadAttention
+from .model.attention import MultiHeadAttention
 
-from .dataset import CustomDataset, load_data
+from .generator.dataset import CustomDataset, load_data
 
-from .encoding import PositionalEncoding
+from .model.encoding import PositionalEncoding
 
-from .tokeniser import Tokenizer
+from .tokenizer.tokeniser import Tokenizer
 
-from .transformerblock import TransformerBlock
+from .model.transformerblock import TransformerBlock
 
-from .transformers import TransformerEncoder, TransformerDecoder
+from .model.transformers import TransformerEncoder, TransformerDecoder
 
 from .utils import load_model, save_model, compute_loss
 

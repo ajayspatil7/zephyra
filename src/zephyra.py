@@ -10,9 +10,9 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from utils import train
 import time
-from transformerblock import Zephyra
-from tokeniser import create_tokenizer
-from trainingSamplesBuilder import QADataset
+from model.transformerblock import Zephyra
+from tokenizer.tokeniser import create_tokenizer
+from generator.trainingSamplesBuilder import QADataset
 import logging
 
 

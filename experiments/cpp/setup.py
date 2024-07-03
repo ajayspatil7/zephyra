@@ -3,7 +3,7 @@ import pybind11
 import sys
 
 # Specify the compiler flags
-extra_compile_args = ['-std=c++11']
+extra_compile_args = ['-std=c++11', '-O3']
 
 # For macOS, we need to specify the minimum version
 if sys.platform == 'darwin':

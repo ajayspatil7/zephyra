@@ -6,12 +6,10 @@ import time
 import pandas as pd
 
 # strassen_in_C
-strassen = [0.00040198500028054696, 0.0004494069999054773, 0.00038358600068022497, 0.0003964750012528384, 0.00038412499998230487, 0.0003914259996236069, 0.00039553600072395056, 0.0004185839989077067, 0.0004421379999257624, 0.0004035849997308105]
-traditional = [0.0006441400000767317, 0.0006575919996976154, 0.0006631280011788476, 0.0008676840006955899, 0.0003785659991990542, 0.00038142799894558266, 0.0003874079993693158, 0.00038297200080705807, 0.0003835600000456907, 0.00037734299985459074]
 # Load the shared library
 
-matrix_lib = ctypes.CDLL('./matmul.so')
-# matrix_lib = ctypes.CDLL('./strassens.so')
+# matrix_lib = ctypes.CDLL('./matmul.so')
+matrix_lib = ctypes.CDLL('./strassens.so')
 
 # Define the argument and return types
 matrix_lib.matrix_multiply.argtypes = [
@@ -73,9 +71,9 @@ def matrix_multiply_python(matrix1, matrix2):
 # print(res)
 # print('-' * 100)
 
-timer_strassen = []
-timer_traditional = []
-timer_torch = []
+timer_strassen = [2.0]
+timer_traditional = [2.97]
+timer_torch = [1.98]
 
 
 # print('-' * 100)
@@ -92,14 +90,13 @@ m = 25
 matrix1 = torch.randint(0, 100, (m, m))
 matrix2 = torch.randint(0, 100, (m, m))
 
-st1 = time.perf_counter()
-result = matrix_multiply_python(np.array(matrix1), np.array(matrix2))
+st1 = time.time_ns()
+# result = matrix_multiply_python(np.array(matrix1), np.array(matrix2))
 res = torch.matmul(matrix1, matrix2)
-sp1 = time.perf_counter()
-timer_torch.append(float(sp1-st1))
+sp1 = time.time_ns()
 # print(f"\nTime took by C wrapper: {sp1 - st1}\n")
 
-print(timer_torch)
+print((sp1 - st1) / 1e-9)
 
 # print(result)
 # print('-' * 100)

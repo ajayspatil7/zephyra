@@ -17,7 +17,6 @@ from .utils import load_model, save_model, compute_loss
 from .zephyra import Zephyra
 
 
-
 __version__ = '1.0.0'
 __author__ = 'Ajay S Patil'
 __email__ = 'ajaysp.py@gmail.com'

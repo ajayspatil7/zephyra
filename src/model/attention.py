@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import math
+from experiments.cpp import lxa
 
 class SelfAttention(nn.Module):
 
@@ -73,9 +74,9 @@ class SelfAttention(nn.Module):
         # TODO [LOW] : Find a way to detach the below matmul to run on a GPU
         attn_scores = torch.matmul(q, k.transpose(-2, -1)) / self.scale
         attn_probs = torch.softmax(attn_scores, dim=-1)
-
-
-        return torch.matmul(attn_probs, v)
+        print("Self Attention strassen is running...")
+        return lxa.strassen(attn_probs, v)
+        # return torch.matmul(attn_probs, v)
 
 
 class MultiHeadAttention(nn.Module):

@@ -31,7 +31,7 @@ def main():
     epochs = 10
     lr = 0.001
 
-    training_data = '../data/train.txt'
+    training_data = '/Users/ajay/Downloads/zephyra/data/train.txt'
 
     logging.info("(Step 1)  : Tokeniser Loaded...")
     # Load tokenizer

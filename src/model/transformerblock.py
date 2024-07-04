@@ -72,8 +72,8 @@ class Zephyra(nn.Module):
 
         return current_tokens
 
-    def generate_answer(self, question, tokenizer, max_length=100, temperature=0.7):
-        device = next(self.parameters()).device  # Get the device of the model
+    def generate_answer(self, question, tokenizer, max_length=512, temperature=0.5):
+        device = next(self.parameters()).device  
         question_tokens = torch.tensor(tokenizer.encode("Question: " + question + " Answer:")).unsqueeze(0)
         generated_tokens = self.generate(question_tokens, max_length, temperature)
         return tokenizer.decode(generated_tokens[0].tolist()).split("Answer:", 1)[1].strip()

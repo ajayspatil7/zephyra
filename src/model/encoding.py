@@ -19,5 +19,5 @@ class PositionalEncoding(nn.Module):
         return x + self.pe[:x.size(0), :]
     
 
-# TODO: 
+# TODO: BPE (byte pair encoding) should be implemented here
 """<-----------End of encodings.py----------->"""

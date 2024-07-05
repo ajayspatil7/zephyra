@@ -1,90 +1,124 @@
 # Zephyra
 
-Zephyra is a from-scratch implementation of a large language model (LLM) tailored for question-and-answer tasks. This project demonstrates the fundamentals of building and training a transformer-based model, encapsulating various stages of data processing, model training, and evaluation.
+Zephyra is a from-scratch implementation of a large language model (LLM) tailored for question-and-answer tasks. This project demonstrates the fundamentals of building and training a transformer-based model, encapsulating various stages of data processing, model training, and evaluation. Enjoy the repo ;)
 
-## Directory and File Descriptions
 
-- **`__pycache__/`**: Stores Python bytecode files to improve loading times.
-  
-- **`data/`**: Contains datasets and text files used for training and testing the model.
-  - `cleanData.txt`: Processed text data.
-  - `dataSet.csv`, `sampleData.csv`, `train.csv`: CSV files containing datasets for various purposes.
-  - `sample.txt`, `train.txt`: Sample and training data in text format.
+## Project Structure
 
-- **`experiments/`**: Holds experimental files and Jupyter notebooks.
-  - `hello.asm`: A sample assembly file.
-  - `output.o`: Compiled object file.
-  - `transformer_train.ipynb`: Jupyter notebook for training and experimenting with the transformer model.
+The project is organized into several key directories:
 
-- **`logs/`**: Logging directory.
-  - `zephyra.log`: Log file capturing the process and results during execution.
+```
 
-- **`src/`**: Source code directory containing the core components of the Zephyra project.
-  - `__init__.py`: Initializes the `src` module.
-  - `attention.py`: Implements attention mechanisms.
-  - `dataset.py`: Handles dataset loading and manipulation.
-  - `dataSetBuilder.py`: Tools for constructing and preprocessing datasets.
-  - `encoding.py`: Manages text encoding functions.
-  - `tokeniser.py`: Tokenization utilities.
-  - `trainingSamplesBuilder.py`: Builds training samples from the raw dataset.
-  - `transformerblock.py`: Defines the transformer block architecture.
-  - `transformers.py`: High-level transformer model implementations.
-  - `utils.py`: Utility functions for various tasks.
-  - `zephyra.py`: Main script to run the Zephyra model.
+ZEPHYRA
 
-- **`.gitignore`**: Specifies files and directories to be ignored by Git.
-- **`README.md`**: Documentation file you are reading right now.
-- **`ZephyraTechnicals.pptx`**: PowerPoint presentation explaining technical aspects of the project.
+├── data/
+
+├── experiments/
+
+├── logs/
+
+├── src/
+
+└── temp/
+
+```
+
+### Data
+
+The data/ directory contains various data files used in the project:
+
+- cleanData.txt: Likely a processed, cleaned version of the raw data
+
+- dataSet.csv: A dataset in CSV format
+
+- sample.txt and sampleData.csv: Sample data files, possibly for testing or demonstration
+
+- train.csv and train.txt: Training data in both CSV and text formats
+
+### Experiments
+
+The experiments/ directory seems to be used for different experimental setups:
+
+- __pycache__/: Python cache directory
+
+- cpp/: Possibly C++ related experiments or implementations
+
+- pipe/: Likely contains pipeline experiments or configurations
+
+### Logs
+
+The logs/ directory contains log files:
+
+- zephyra.log: Main log file for the project
+
+### Source Code (src)
+
+The src/ directory contains the main source code for the project:
+
+- __pycache__/: Python cache directory
+
+- generator/: Code related to data/text generation
+
+- model/: Contains the main model implementation
+
+- tokenizer/: Implementation of tokenization algorithms
+
+  - bytepairenc.py: Byte Pair Encoding implementation
+
+  - tokeniser.py: Main tokenizer implementation
+
+  - __init__.py: Initialization file for the module
+
+  - utils.py: Utility functions for the model.
+
+  - zephyra.py: Core Zephyra file. Just like the ```main.py```
+
+  - zephyra.log: Log file for tokeniser
+
+### Temporary Files
+
+The temp/ directory is likely used for temporary files generated during processing or experiments.
 
 ## Getting Started
 
-### Prerequisites
+To get started with Zephyra:
 
-Ensure you have the following installed:
+1. Clone the repository
 
-- Python 3.11 or higher
-- Pip (Python package installer)
-- Virtualenv (recommended)
+2. Set up your Python environment (recommend using a virtual environment)
 
-### Installation
+3. Install required dependencies ```pip install -r requirements.txt```
 
-1. **Clone the repository:**
-   ```
-   bash
-   git clone https://github.com/ajayspatil7/zephyra.git
-   cd zephyra 
-   
-   ```
+4. Explore the src/ directory to understand the main components
 
-2. **Creating and Activating venv**
-    ```
-    python -m venv venv
-    source venv/bin/activate  
-    # On Windows use `venv\Scripts\activate`             
-    ```
+5. Use the data in the data/ directory for training and testing
 
-2. **Installing Packages**
-```
-pip install -r requirements.txt
-```
+## Contributing
 
-### Running the program
-<p><i>As of now the model is not fully functional, lots of training is needed. You can run the program without any errors as of now. You can contribute by training the model on as much as data possible</i></p>
+Contributions to Zephyra are welcome! Here are some areas you could consider:
 
-Running the program
-```bash
-python3 src/zephyra.py
-```
+- Enhancing the tokenizer implementations in src/tokenizer/
 
-### Contributing
+- Improving or adding new generation capabilities in src/generator/
 
-I welcome contributions to enhance the Zephyra project. Please follow these steps:
+- Optimizing the model in src/model/
 
-1. Fork the repository.
-2. Create a new feature branch (git checkout -b feature-branch).
-3. Commit your changes (git commit -am 'Add new feature').
-4. Push to the branch (git push origin feature-branch).
-5. Open a Pull Request(PR).
+- Adding new experiments in the experiments/ directory
+
+- Improving data processing scripts for the files in data/
+
+Please ensure to follow the project's coding standards and submit pull requests for any new features or bug fixes.
+
+## License
+
+MIT
+
+## Contact
+
+Ajay S Patil
+
+Project Link: [https://github.com/ajayspatil7/zephyra](https://github.com/ajayspatil7/zephyra)
+
 
 
 

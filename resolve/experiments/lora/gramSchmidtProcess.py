@@ -51,7 +51,7 @@ def gramSchmidt(v1: list[int], v2: list[int], v3: list[int]) -> list:
 
     a2_dot_e1 = sum([i*j for (i, j) in zip(v2, e1)])
     
-
+    raise NotImplementedError("funtion 'gramSchmidt()' not been fully implemented, still under implementation")
 
 v1 = [1, 1, 0]
 v2 = [1, 2, 0]

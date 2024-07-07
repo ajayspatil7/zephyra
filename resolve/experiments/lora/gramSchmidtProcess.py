@@ -40,18 +40,24 @@ def gramSchmidt(v1: list[int], v2: list[int], v3: list[int]) -> list:
     magnitude_v3 = math.sqrt(sum(v3))
 
 
-    # step 1b : construct unit vectors for the vectors
+    # step 1b : construct unit vectors for all the vectors
     e1 = [(1/magnitude_v1) * v1[i] for i in range(len(v1))]
     e2 = [(1/magnitude_v2) * v2[i] for i in range(len(v2))]
     e3 = [(1/magnitude_v3) * v3[i] for i in range(len(v3))]
 
-    # step 2  : generate a vector e2, which is perpendicular to 'e1' using the formula, e2 = A2 - (A2 * e1) * e1
+    # step 2  : Generate a vector e2, which is perpendicular to 'e1' using the formula, e2 = A2 - (A2 * e1) * e1
 
     # step 2a : calculate the dot product of a2 and e1 here a2 ~ v2  -- sum(v2[i] * e2[i])
-
     a2_dot_e1 = sum([i*j for (i, j) in zip(v2, e1)])
+    a2_prod_e1 = [(a2_dot_e1 * e1[i]) for i in range(len(e1))]
+    prependicular = a2_dot_e1 - v2
+
     
-    raise NotImplementedError("funtion 'gramSchmidt()' not been fully implemented, still under implementation")
+    # step 3 : Generate a vector from A3 which is perpendicular to both e1 and e2 and denote it as e3
+
+    
+
+    
 
 v1 = [1, 1, 0]
 v2 = [1, 2, 0]

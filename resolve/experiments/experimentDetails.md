@@ -1,5 +1,7 @@
 """
 ------------------------------Basics------------------------------
+Project name    : Zephyra
+Alias name      : zephyra-resolve
 Experiment name : Poly-Domain-Unified-Architecture
 Author          : Me
 Area            : Large Language Models, Deep Neural Networks, Transformers

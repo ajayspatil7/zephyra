@@ -54,7 +54,7 @@ def gramSchmidt(v1: list[int], v2: list[int], v3: list[int]) -> list:
 
     
     # step 3 : Generate a vector from A3 which is perpendicular to both e1 and e2 and denote it as e3
-
+    
     
 
     

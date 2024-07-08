@@ -13,7 +13,7 @@ First off, thank you for considering contributing to Zephyra! It's people like y
 
 ## Code of Conduct
 
-This project and everyone participating in it is governed by the Zephyra Code of Conduct. By participating, you are expected to uphold this code. Please report unacceptable behavior to [INSERT EMAIL].
+This project and everyone participating in it is governed by the Zephyra Code of Conduct. By participating, you are expected to uphold this code. Please report unacceptable behavior to [ajaysp.py@gmail.com].
 
 ## What We're Looking For
 
@@ -55,15 +55,14 @@ Zephyra is an ambitious project aiming to create a unified architecture for mult
 
 ### Pull Requests
 
-1. Follow all instructions in [the template](.github/PULL_REQUEST_TEMPLATE.md)
-2. Follow the [style guidelines](#style-guidelines)
-3. After you submit your pull request, verify that all status checks are passing
+1. You are free to use your own PR template as long as it's clear and concise
+2. After you submit your pull request, verify that all status checks are passing
 
 ## Style Guidelines
 
 ### Git Commit Messages
 
-- Use the present tense ("Add feature" not "Added feature")
+- Use the past tense if sucessfully implemented ("Added feature" not "Adding feature") else use present tense
 - Use the imperative mood ("Move cursor to..." not "Moves cursor to...")
 - Limit the first line to 72 characters or less
 - Reference issues and pull requests liberally after the first line
@@ -81,7 +80,7 @@ Zephyra is an ambitious project aiming to create a unified architecture for mult
 
 ## Community
 
-- Participate in our regular community calls (schedule available in our GitHub Discussions)
+- Participate in our regular community calls (schedule available in our GitHub Discussions very soon)
 
 Remember, contributions to Zephyra are not just about code. Improving documentation, writing tutorials, submitting bug reports, and providing feedback on proposed features are all valuable contributions!
 

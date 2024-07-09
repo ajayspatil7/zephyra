@@ -1,7 +1,5 @@
 # Zephyra
-
 Zephyra is a from-scratch implementation of a large language model (LLM) tailored for question-and-answer tasks. This project demonstrates the fundamentals of building and training a transformer-based model, encapsulating various stages of data processing, model training, and evaluation. Enjoy the repo ;)
-
 
 ## Project Structure
 

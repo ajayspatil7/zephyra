@@ -19,9 +19,7 @@ class PositionalEncoding(nn.Module):
 
     def forward(self, x):
         return x + self.pe[:x.size(0), :]
-    
 
-    # TODO: BPE (byte pair encoding) should be implemented here
 
 
 class BytePairEncoding:

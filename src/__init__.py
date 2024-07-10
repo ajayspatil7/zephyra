@@ -22,5 +22,5 @@ from .tokenizer.bytepairenc import bytePairEncoding
 __version__ = '1.0.0'
 __author__ = 'Ajay S Patil'
 __email__ = 'ajaysp.py@gmail.com'
-__description__ = 'Zephyra: A Transformer-based model for sequence encoding'
+__description__ = 'Zephyra: A Transformer-based large language model'
 

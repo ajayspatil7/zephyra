@@ -15,3 +15,7 @@ experiments/__pycache__/matmulCPP.cpython-312.pyc
 .vscode/settings.json
 .vscode/tasks.json
 project
+claude
+project-files
+test.txt
+train.txt

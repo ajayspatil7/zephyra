@@ -3,17 +3,17 @@ import torch
 import torch.nn as nn
 
 class MultiQueryAttention(nn.Module):
-    def __init__(self, d_model, num_heads, dropout=0.1):
+    def __init__(self, d_model, num_heads, dropout, head_dim=128):
         super().__init__()
         self.d_model = d_model
         self.num_heads = num_heads
-        self.head_dim = d_model // num_heads
+        self.head_dim = head_dim
         
-        self.q_proj = nn.Linear(d_model, d_model)
-        self.k_proj = nn.Linear(d_model, self.head_dim)
-        self.v_proj = nn.Linear(d_model, self.head_dim)
+        self.q_proj = nn.Linear(d_model, d_model, bias=True)
+        self.k_proj = nn.Linear(d_model, head_dim, bias=True)
+        self.v_proj = nn.Linear(d_model, head_dim, bias=True)
         
-        self.out_proj = nn.Linear(d_model, d_model)
+        self.out_proj = nn.Linear(d_model, d_model, bias=True)
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x, mask=None):

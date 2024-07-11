@@ -45,8 +45,6 @@ def apply_rotary_pos_emb(x, cos, sin):
     cos = cos.view(1, seq_len, 1, -1)
     sin = sin.view(1, seq_len, 1, -1)
     
-    print(f"Reshaped x: {x.shape}, Adjusted cos: {cos.shape}, Adjusted sin: {sin.shape}")
-    
     # Apply rotary embeddings
     x_rotated = (x * cos) + (rotate_half(x) * sin)
     

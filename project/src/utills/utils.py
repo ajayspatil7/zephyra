@@ -1,6 +1,7 @@
 import torch
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import LambdaLR
+from zephyra_model import ZephyraResolve
 from tqdm import tqdm
 
 def get_lr(optimizer):
@@ -57,3 +58,39 @@ def create_optimizer_and_scheduler(model, lr, warmup_steps, num_training_steps):
     scheduler = LambdaLR(optimizer, lr_lambda)
     
     return optimizer, scheduler
+
+def load_model(model_path, tokenizer_path):
+    # Setting model architecture
+    model = ZephyraResolve(
+        vocab_size=10000,
+        d_model=768,
+        num_layers=6,
+        num_heads=12,
+        d_ff=1024,
+        max_seq_length=1024,
+        dropout=0.1,
+        tokenizer_path=tokenizer_path
+    )
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    # Load the weights
+    model.load_state_dict(torch.load(model_path, map_location=device))
+    model = model.to(device)
+    model.eval()
+
+    return model, device
+
+def generate_text(model, tokenizer, prompt, max_length=100, temperature=0.7):
+    model.eval()
+    tokens = tokenizer.encode(prompt)
+    input_ids = torch.tensor(tokens).unsqueeze(0).to(next(model.parameters()).device)
+    
+    with torch.no_grad():
+        generated_ids = model.generate(
+            input_ids,
+            max_length=max_length,
+            temperature=temperature
+        )
+    
+    generated_text = tokenizer.decode(generated_ids[0].tolist())
+    return generated_text

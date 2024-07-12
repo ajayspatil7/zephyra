@@ -72,12 +72,18 @@ def load_model(model_path: Path, device: str = None):
     model = ZephyraResolve(**MODEL_CONFIG)
     state_dict = torch.load(model_path, map_location=device)
     
-    # Print shapes of rotary embedding parameters
+    # Resize RotaryEmbedding if necessary
     for key, value in state_dict.items():
         if 'rotary_emb.inv_freq' in key:
-            print(f"Loaded model {key} shape: {value.shape}")
+            loaded_dim = value.shape[0]
+            current_dim = model.state_dict()[key].shape[0]
+            if loaded_dim != current_dim:
+                print(f"Resizing {key} from {current_dim} to {loaded_dim}")
+                block_index = int(key.split('.')[1])
+                model.blocks[block_index].rotary_emb.resize_inv_freq(loaded_dim)
     
-    model.load_state_dict(state_dict, strict=False)
+    # Load the state dict
+    model.load_state_dict(state_dict, strict=True)
     model = model.to(device)
     model.eval()
 

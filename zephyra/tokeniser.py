@@ -1,7 +1,7 @@
 # create_tokenizer.py
 
 import json
-from tokenization.bytepairencoding import BPETokenizer
+from .tokenization.bytepairencoding import BPETokenizer
 from utills.config import VOCAB_SIZE, TRAIN_DATA_PATH, TOKENIZER_PATH
 
 def load_corpus(file_path):

@@ -6,8 +6,11 @@ from typing import Optional
 
 
 from .zephyrablock import ZephyraBlock
+from ..tokeniser import BPETokenizer
 
 class ZephyraResolve(nn.Module):
+
+
     def __init__(
         self,
         vocab_size: int,
@@ -17,7 +20,7 @@ class ZephyraResolve(nn.Module):
         d_ff: int,
         max_seq_length: int,
         dropout: float = 0.1,
-        tokenizer_path: Optional[str] = ""
+        tokenizer_path: Optional[str] = "",
     ):
         super().__init__()
         self.vocab_size = vocab_size
@@ -25,8 +28,9 @@ class ZephyraResolve(nn.Module):
         self.num_layers = num_layers
         self.max_seq_length = max_seq_length
 
-        # Tokenizer
 
+        # Tokenizer
+        self.tokenizer = BPETokenizer()
         if tokenizer_path:
             self.tokenizer.load(tokenizer_path)
 
@@ -48,6 +52,7 @@ class ZephyraResolve(nn.Module):
 
         # Dropout
         self.dropout = nn.Dropout(dropout)
+
 
     def forward(self, input_ids: torch.Tensor, attention_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
         batch_size, seq_length = input_ids.size()
@@ -72,6 +77,7 @@ class ZephyraResolve(nn.Module):
         logits = self.output_layer(x)
 
         return logits
+
 
     def generate(self, input_ids: torch.Tensor, max_length: int, temperature: float = 1.0,
                  top_k: Optional[int] = None, top_p: Optional[float] = None) -> torch.Tensor:
@@ -113,8 +119,10 @@ class ZephyraResolve(nn.Module):
 
         return input_ids
 
+
     def encode(self, text: str) -> torch.Tensor:
         return torch.tensor(self.tokenizer.encode(text), dtype=torch.long)
+    
 
     def decode(self, tokens: torch.Tensor) -> str:
         return self.tokenizer.decode(tokens.tolist())

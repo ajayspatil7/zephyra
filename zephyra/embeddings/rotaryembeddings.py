@@ -10,11 +10,14 @@ import torch
 import torch.nn as nn
 
 class RotaryEmbedding(nn.Module):
-    def __init__(self, dim, max_position_embeddings=2048, base=10000):
+    def __init__(self, dim=64, max_position_embeddings=2048, base=10000):
         super().__init__()
         inv_freq = 1. / (base ** (torch.arange(0, dim, 2).float() / dim))
         self.register_buffer('inv_freq', inv_freq)
         self.max_seq_len_cached = max_position_embeddings
+        self.dim = dim
+        print(f"RotaryEmbedding initialized with inv_freq shape: {inv_freq.shape}")
+
         
     def forward(self, x, seq_len=None):
         if seq_len > self.max_seq_len_cached:
@@ -34,6 +37,15 @@ class RotaryEmbedding(nn.Module):
         emb = torch.cat((freqs, freqs), dim=-1).to(self.inv_freq.device)
         self.register_buffer('cos_cached', emb.cos()[None, None, :, :], persistent=False)
         self.register_buffer('sin_cached', emb.sin()[None, None, :, :], persistent=False)
+
+
+    def resize_inv_freq(self, new_dim):
+        if new_dim != self.dim:
+            self.dim = new_dim
+            inv_freq = 1. / (10000 ** (torch.arange(0, new_dim, 2).float() / new_dim))
+            self.register_buffer('inv_freq', inv_freq)
+            print(f"RotaryEmbedding resized to inv_freq shape: {inv_freq.shape}")
+            
 
 def apply_rotary_pos_emb(x, cos, sin):
     # Reshape x to [batch, seq_len, num_heads, head_dim]

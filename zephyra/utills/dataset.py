@@ -2,7 +2,8 @@
 
 import torch
 from torch.utils.data import Dataset
-from tokenization.bytepairencoding import BPETokenizer
+from ..tokenization.bytepairencoding import BPETokenizer
+
 
 class ZephyraDataset(Dataset):
     def __init__(self, file_path, tokenizer, max_length):

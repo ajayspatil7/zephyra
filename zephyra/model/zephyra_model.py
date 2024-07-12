@@ -4,8 +4,8 @@ import torch
 import torch.nn as nn
 from typing import Optional
 
-from tokenization.bytepairencoding import BPETokenizer
-from zephyrablock import ZephyraBlock
+from ..tokenization.bytepairencoding import BPETokenizer
+from .zephyrablock import ZephyraBlock
 
 class ZephyraResolve(nn.Module):
     def __init__(

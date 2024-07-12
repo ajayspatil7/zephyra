@@ -1,8 +1,15 @@
 import torch
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import LambdaLR
-from zephyra_model import ZephyraResolve
+
 from tqdm import tqdm
+from pathlib import Path
+
+from ..model.zephyra_model import ZephyraResolve
+from .config import MODEL_CONFIG, TOKENIZER_PATH
+from ..tokenization.bytepairencoding import BPETokenizer
+
+
 
 def get_lr(optimizer):
     for param_group in optimizer.param_groups:

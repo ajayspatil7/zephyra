@@ -1,0 +1,6 @@
+Metadata-Version: 2.1
+Name: zephyra
+Version: 0.1.0
+License-File: LICENSE
+Requires-Dist: torch
+Requires-Dist: numpy

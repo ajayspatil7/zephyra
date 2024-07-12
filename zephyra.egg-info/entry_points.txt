@@ -1,0 +1,2 @@
+[console_scripts]
+zephyra = zephyra.resolve:main

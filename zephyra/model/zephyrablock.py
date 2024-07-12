@@ -1,9 +1,9 @@
 import torch
 import torch.nn as nn
-from project.src.attention.mq_attention import MultiQueryAttention
-from project.src.embeddings.rotaryembeddings import RotaryEmbedding, apply_rotary_pos_emb
-from layers.feedforward import SwiGLUFFN
-from layers.normalization import RMSNorm
+from ..attention.mq_attention import MultiQueryAttention
+from ..embeddings.rotaryembeddings import RotaryEmbedding, apply_rotary_pos_emb
+from ..layers.feedforward import SwiGLUFFN
+from ..layers.normalization import RMSNorm
 
 class ZephyraBlock(nn.Module):
     def __init__(self, d_model, num_heads, d_ff, dropout=0.1):

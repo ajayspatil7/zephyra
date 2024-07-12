@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 from typing import Optional
 
-from ..tokenization.bytepairencoding import BPETokenizer
+
 from .zephyrablock import ZephyraBlock
 
 class ZephyraResolve(nn.Module):
@@ -26,7 +26,7 @@ class ZephyraResolve(nn.Module):
         self.max_seq_length = max_seq_length
 
         # Tokenizer
-        self.tokenizer = BPETokenizer(vocab_size)
+
         if tokenizer_path:
             self.tokenizer.load(tokenizer_path)
 

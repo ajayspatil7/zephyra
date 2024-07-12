@@ -1,15 +1,14 @@
 import torch
-from torch.optim import AdamW
-from torch.optim.lr_scheduler import LambdaLR
-
-from tqdm import tqdm
 from pathlib import Path
+from zephyra.model.zephyra_model import ZephyraResolve
+from zephyra.tokenization.bytepairencoding import BPETokenizer
+from zephyra.utills.config import MODEL_CONFIG, TOKENIZER_PATH
 
-from ..model.zephyra_model import ZephyraResolve
-from .config import MODEL_CONFIG, TOKENIZER_PATH
-from ..tokenization.bytepairencoding import BPETokenizer
 
-
+def load_tokenizer(tokenizer_path: Path):
+    tokenizer = BPETokenizer()
+    tokenizer.load(str(tokenizer_path))
+    return tokenizer
 
 def get_lr(optimizer):
     for param_group in optimizer.param_groups:
@@ -66,7 +65,7 @@ def create_optimizer_and_scheduler(model, lr, warmup_steps, num_training_steps):
     
     return optimizer, scheduler
 
-def load_model(model_path, tokenizer_path):
+def load_model(model_path):
     # Setting model architecture
     model = ZephyraResolve(
         vocab_size=10000,
@@ -76,7 +75,6 @@ def load_model(model_path, tokenizer_path):
         d_ff=1024,
         max_seq_length=1024,
         dropout=0.1,
-        tokenizer_path=tokenizer_path
     )
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

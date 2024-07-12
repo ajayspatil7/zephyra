@@ -3,6 +3,7 @@ from collections import defaultdict
 import json
 from typing import List, Dict, Tuple
 
+
 class BPETokenizer:
     def __init__(self, vocab_size: int = 1000):
         self.vocab_size = vocab_size
@@ -81,7 +82,12 @@ class BPETokenizer:
             }, f)
 
     def load(self, path: str):
-        with open("/Users/ajay/Downloads/zephyra/project/src/tokenizer.json", 'r') as f:
+        from pathlib import Path
+
+        ROOT_DIR = Path(__file__).resolve().parents[2]
+        TOKENIZER_PATH = ROOT_DIR / "zephyra" / "tokenizer.json"
+
+        with open(TOKENIZER_PATH, 'r') as f:
             data = json.load(f)
         self.vocab = data['vocab']
         self.merges = data['merges']

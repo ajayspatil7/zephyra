@@ -10,7 +10,7 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = ROOT_DIR / "data"
 
 # Model checkpoint directory
-CHECKPOINT_DIR = ROOT_DIR / "checkpoints"
+CHECKPOINT_DIR = ROOT_DIR / "zephyra" / "checkpoints"
 
 # Tokenizer file path
 TOKENIZER_PATH = ROOT_DIR / "zephyra" / "tokenizer.json"
@@ -54,4 +54,6 @@ TOKENIZER_PATH = "tokenizer.json"
 # Logging and saving
 LOG_INTERVAL = 100
 SAVE_INTERVAL = 1000
-CHECKPOINT_DIR = "checkpoints"
+
+
+print(CHECKPOINT_DIR)

@@ -65,21 +65,19 @@ def create_optimizer_and_scheduler(model, lr, warmup_steps, num_training_steps):
     
     return optimizer, scheduler
 
-def load_model(model_path):
-    # Setting model architecture
-    model = ZephyraResolve(
-        vocab_size=10000,
-        d_model=768,
-        num_layers=6,
-        num_heads=12,
-        d_ff=1024,
-        max_seq_length=1024,
-        dropout=0.1,
-    )
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    # Load the weights
-    model.load_state_dict(torch.load(model_path, map_location=device))
+def load_model(model_path: Path, device: str = None):
+    if device is None:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+    
+    model = ZephyraResolve(**MODEL_CONFIG)
+    state_dict = torch.load(model_path, map_location=device)
+    
+    # Print shapes of rotary embedding parameters
+    for key, value in state_dict.items():
+        if 'rotary_emb.inv_freq' in key:
+            print(f"Loaded model {key} shape: {value.shape}")
+    
+    model.load_state_dict(state_dict, strict=False)
     model = model.to(device)
     model.eval()
 

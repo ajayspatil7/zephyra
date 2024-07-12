@@ -14,6 +14,8 @@ class ZephyraBlock(nn.Module):
         self.norm2 = RMSNorm(d_model)
         self.dropout = nn.Dropout(dropout)
         self.rotary_emb = RotaryEmbedding(dim=d_model // num_heads)
+        print(f"RotaryEmbedding inv_freq shape: {self.rotary_emb.inv_freq.shape}")
+
 
     def forward(self, x, mask=None):
         # Apply rotary positional embeddings

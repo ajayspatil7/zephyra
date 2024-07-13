@@ -1,0 +1,5 @@
+
+
+class Adapters:
+
+    raise NotImplementedError

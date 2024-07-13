@@ -6,9 +6,6 @@ def rotate_half(x):
     x1, x2 = x[..., :x.shape[-1] // 2], x[..., x.shape[-1] // 2:]
     return torch.cat((-x2, x1), dim=-1)
 
-import torch
-import torch.nn as nn
-
 class RotaryEmbedding(nn.Module):
     def __init__(self, dim=64, max_position_embeddings=2048, base=10000):
         super().__init__()

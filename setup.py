@@ -8,7 +8,6 @@ setup(
     install_requires=[
         "torch",
         "numpy",
-        # Add other dependencies
     ],
     entry_points={
         "console_scripts": [

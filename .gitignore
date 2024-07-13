@@ -19,7 +19,7 @@ claude
 project-files
 test.txt
 train.txt
-
+zephyra.egg-info
 zephyra/embeddings/__pycache__/rotaryembeddings.cpython-312.pyc
 zephyra/model/__pycache__/zephyra_model.cpython-312.pyc
 zephyra/model/__pycache__/zephyrablock.cpython-312.pyc

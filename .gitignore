@@ -46,3 +46,8 @@ zephyra/model/__pycache__/zephyrablock.cpython-312.pyc
 zephyra/utills/__pycache__/config.cpython-312.pyc
 zephyra/utills/__pycache__/dataset.cpython-312.pyc
 zephyra/utills/__pycache__/utils.cpython-312.pyc
+zephyra/attention/__pycache__/mq_attention.cpython-312.pyc
+zephyra/embeddings/__pycache__/rotaryembeddings.cpython-312.pyc
+zephyra/model/__pycache__/__init__.cpython-312.pyc
+zephyra/model/__pycache__/zephyra_model.cpython-312.pyc
+zephyra/model/__pycache__/zephyrablock.cpython-312.pyc

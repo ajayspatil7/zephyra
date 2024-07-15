@@ -9,7 +9,7 @@ from utils.trainArgs import train_epoch
 import config
 
 def main():
-    print("Modules loaded correctly \n")
+    print("\n Modules loaded correctly \n")
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Device set to : [{device}] \n")

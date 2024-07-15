@@ -1,4 +1,3 @@
-
 import torch
 import torch.nn.functional as F
 
@@ -10,7 +9,8 @@ def train_epoch(model, dataloader, optimizer, device):
         optimizer.zero_grad()
         
         # Create attention mask
-        attention_mask = (batch != dataloader.dataset.tokenizer.get_pad_token_id()).float()
+        attention_mask = (batch != dataloader.dataset.tokenizer.get_pad_token_id()).float().unsqueeze(1).unsqueeze(2)
+        attention_mask = (1.0 - attention_mask) * -10000.0
         
         outputs = model(batch, attention_mask=attention_mask)
         

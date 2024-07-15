@@ -1,8 +1,8 @@
-# src/model/layers.py
 import torch.nn as nn
 from .attention import RotaryAttention
 
 class ZephyraBlock(nn.Module):
+
     
     def __init__(self, hidden_size, num_attention_heads, intermediate_size, layer_norm_eps=1e-5):
         super().__init__()

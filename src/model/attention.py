@@ -1,11 +1,9 @@
-# src/model/attention.py
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import math
 
 class RotaryEmbedding(nn.Module):
-
     def __init__(self, dim, max_position_embeddings=2048, base=10000, device=None):
         super().__init__()
         inv_freq = 1.0 / (base ** (torch.arange(0, dim, 2).float().to(device) / dim))
@@ -20,11 +18,12 @@ class RotaryEmbedding(nn.Module):
     def forward(self, x, seq_len=None):
         if seq_len > self.max_seq_len_cached:
             self._set_cos_sin_cache(seq_len)
-        return (self.cos_cached[:, :, :seq_len, ...].to(x.device),self.sin_cached[:, :, :seq_len, ...].to(x.device),)
-
+        return (
+            self.cos_cached[:, :, :seq_len, ...].to(x.device),
+            self.sin_cached[:, :, :seq_len, ...].to(x.device),
+        )
 
 class RotaryAttention(nn.Module):
-
     def __init__(self, hidden_size, num_attention_heads, max_position_embeddings=2048):
         super().__init__()
         self.hidden_size = hidden_size
@@ -55,8 +54,6 @@ class RotaryAttention(nn.Module):
         
         return attn_output
 
-
-
 def applyRotaryPosEmbedding(q, k, cos, sin):
     return (q * cos) + (rotateHalf(q) * sin), (k * cos) + (rotateHalf(k) * sin)
 
@@ -69,9 +66,7 @@ def sdpAttention(q, k, v, mask=None):
     attn_logits = torch.matmul(q, k.transpose(-2, -1))
     attn_logits = attn_logits / math.sqrt(d_k)
     if mask is not None:
-        attn_logits = attn_logits.masked_fill(mask == 0, -9e15)
+        attn_logits = attn_logits + mask
     attention = F.softmax(attn_logits, dim=-1)
     values = torch.matmul(attention, v)
     return values
-
-

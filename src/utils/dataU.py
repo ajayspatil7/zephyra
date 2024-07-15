@@ -1,5 +1,4 @@
 
-# src/utils/data_utils.py
 import torch
 from torch.utils.data import Dataset
 
@@ -21,7 +20,7 @@ class TextDataset(Dataset):
         if len(encoding) > self.max_length:
             encoding = encoding[:self.max_length]
         else:
-            encoding += [self.tokenizer.special_tokens.PAD] * (self.max_length - len(encoding))
+            pad_token_id = self.tokenizer.get_pad_token_id()
+            encoding += [pad_token_id] * (self.max_length - len(encoding))
         
-        return torch.tensor(encoding)
-
+        return torch.tensor(encoding, dtype=torch.long)

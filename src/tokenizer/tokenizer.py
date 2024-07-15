@@ -1,4 +1,4 @@
-# src/tokenizer/tokenizer.py
+
 import tiktoken
 from .specialTokens import ZephyraTokens
 
@@ -7,6 +7,7 @@ class ZephyraTokenizer:
         self.tokenizer = tiktoken.get_encoding(model_name)
         self.special_tokens = ZephyraTokens()
         self._add_special_tokens()
+        self.vocab_size = self.tokenizer.n_vocab
 
     def _add_special_tokens(self):
         for token in vars(self.special_tokens).values():
@@ -21,13 +22,8 @@ class ZephyraTokenizer:
     def decode(self, tokens):
         return self.tokenizer.decode(tokens)
 
-    def tokenize(self, text):
-        return self.tokenizer.encode(text)
+    def get_vocab_size(self):
+        return self.vocab_size
 
-    def format_chat(self, messages):
-        formatted = []
-        for msg in messages:
-            role = msg['role'].upper()
-            content = msg['content']
-            formatted.append(f"{getattr(self.special_tokens, role)} {content}")
-        return " ".join(formatted)
+    def get_pad_token_id(self):
+        return self.tokenizer.encode(self.special_tokens.PAD)[0]

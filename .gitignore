@@ -5,3 +5,6 @@ project/trash
 project/logs
 project/__pycache__
 project/claude
+project/experiments/.DS_Store
+.DS_Store
+giti

@@ -1,17 +1,14 @@
+# setup.py
 from setuptools import setup, find_packages
 
 setup(
     name="zephyra",
-    version="0.1.0",
-    packages=find_packages(),
-    include_package_data=True,
+    version="0.1",
+    packages=find_packages(where="src"),
+    package_dir={"": "src"},
     install_requires=[
-        "torch",
-        "numpy",
+        "torch>=1.9.0",
+        "tiktoken>=0.3.0",
+        "tqdm>=4.62.0",
     ],
-    entry_points={
-        "console_scripts": [
-            "zephyra=zephyra.resolve:main",
-        ],
-    },
 )

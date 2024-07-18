@@ -11,13 +11,12 @@ ZEPHYRA
 
 ├── data/
 
-├── experiments/
+├── project/
 
-├── logs/
+├── script/
 
 ├── src/
 
-└── temp/
 
 ```
 

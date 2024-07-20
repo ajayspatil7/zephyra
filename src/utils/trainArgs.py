@@ -1,6 +1,8 @@
 import torch
 import torch.nn.functional as F
 
+#This file contains the basic training script
+
 def train_epoch(model, dataloader, optimizer, device):
     model.train()
     total_loss = 0

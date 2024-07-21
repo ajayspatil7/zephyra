@@ -1,4 +1,4 @@
-
+# This file contains the training arguments for the language model
 
 VOCAB_SIZE = 0
 HIDDEN_SIZE = 768

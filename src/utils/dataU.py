@@ -29,13 +29,6 @@ class TextDataset(Dataset):
         return torch.tensor(encoding, dtype=torch.long)
 
 
-
-import torch
-from torch.utils.data import Dataset
-import json
-from src import config
-from src.tokenizer import ZephyraTokenizer
-
 class ZephyraCoQADataset(Dataset):
     def __init__(self, file_path, tokenizer, max_length):
         self.tokenizer = tokenizer
@@ -52,13 +45,8 @@ class ZephyraCoQADataset(Dataset):
         labels = torch.tensor(item['target_ids'], dtype=torch.long)
 
         # Pad or truncate input_ids and labels
-        if len(input_ids) < self.max_length:
-            padding = torch.full((self.max_length - len(input_ids),), self.tokenizer.getPaddingTokenId(), dtype=torch.long)
-            input_ids = torch.cat([input_ids, padding])
-            labels = torch.cat([labels, padding])
-        else:
-            input_ids = input_ids[:self.max_length]
-            labels = labels[:self.max_length]
+        input_ids = self._pad_or_truncate(input_ids)
+        labels = self._pad_or_truncate(labels)
 
         attention_mask = (input_ids != self.tokenizer.getPaddingTokenId()).long()
 
@@ -68,14 +56,24 @@ class ZephyraCoQADataset(Dataset):
             'labels': labels
         }
     
+    def _pad_or_truncate(self, tensor):
+        if len(tensor) < self.max_length:
+            return torch.cat([tensor, torch.full((self.max_length - len(tensor),), self.tokenizer.getPaddingTokenId(), dtype=torch.long)])
+        else:
+            return tensor[:self.max_length]
+
     def get_pad_token_id(self):
         return self.tokenizer.getPaddingTokenId()
 
     @staticmethod
     def collate_fn(batch):
-        input_ids = torch.stack([item['input_ids'] for item in batch])
-        attention_mask = torch.stack([item['attention_mask'] for item in batch])
-        labels = torch.stack([item['labels'] for item in batch])
+        # Find max length in the batch
+        max_len = max(len(item['input_ids']) for item in batch)
+
+        # Pad all tensors to max_len
+        input_ids = torch.stack([torch.cat([item['input_ids'], torch.full((max_len - len(item['input_ids']),), item['input_ids'][-1], dtype=torch.long)]) for item in batch])
+        attention_mask = torch.stack([torch.cat([item['attention_mask'], torch.zeros(max_len - len(item['attention_mask']), dtype=torch.long)]) for item in batch])
+        labels = torch.stack([torch.cat([item['labels'], torch.full((max_len - len(item['labels']),), -100, dtype=torch.long)]) for item in batch])
 
         print(f"Collated shapes - Input: {input_ids.shape}, Attention: {attention_mask.shape}, Labels: {labels.shape}")
 
@@ -85,7 +83,8 @@ class ZephyraCoQADataset(Dataset):
             'labels': labels
         }
 
-# Usage example:
+
+
 if __name__ == "__main__":
     tokenizer = ZephyraTokenizer()
     dataset = ZephyraCoQADataset('./data/dataset/coqa_train.json', tokenizer)

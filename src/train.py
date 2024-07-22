@@ -12,6 +12,8 @@ import warnings
 
 warnings.filterwarnings('ignore')
 
+
+
 def get_lr(optimizer):
     for param_group in optimizer.param_groups:
         return param_group['lr']
@@ -26,7 +28,7 @@ def main():
     print(f"Tokenizer loaded on : [{device}]\n")
 
     config.VOCAB_SIZE = tokenizer.getVocabSize()
-    print(f"Vocabulary size: {config.VOCAB_SIZE}\n")
+    print(f"Vocabulary size: [{config.VOCAB_SIZE}]\n")
     
     model = ZephyraModel(
         vocab_size=config.VOCAB_SIZE,
@@ -46,15 +48,13 @@ def main():
     print(f"Dataset and Dataloader loaded on : [{device}] \n")
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=config.LEARNING_RATE, weight_decay=config.WEIGHT_DECAY)
-    print(f"Optimiser loaded on : [{device}]\n")
-
     scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=config.LR_SCHEDULER_FACTOR, patience=config.LR_SCHEDULER_PATIENCE)
     
     os.makedirs(config.CHECKPOINT_DIR, exist_ok=True)
     os.makedirs(config.LOG_DIR, exist_ok=True)
     writer = SummaryWriter(log_dir=config.LOG_DIR)
     
-    print(f"Scheduler and Training logger loaded and training started on : [{device}]\n")
+    print(f"Optimizer and scheduler loaded, training started on : [{device}]\n")
     
     best_val_loss = float('inf')
     patience_counter = 0
@@ -71,17 +71,11 @@ def main():
             val_loss = validate_epoch(model, val_dataloader, device, writer, epoch)
             print(f"Epoch {epoch+1}/{config.NUM_EPOCHS}, Validation Loss: {val_loss:.4f}")
             
-            old_lr = get_lr(optimizer)
             scheduler.step(val_loss)
-            new_lr = get_lr(optimizer)
-            
-            if old_lr != new_lr:
-                print(f"Learning rate reduced from {old_lr:.6f} to {new_lr:.6f}")
             
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
                 patience_counter = 0
-                # Save best model
                 torch.save(model.state_dict(), os.path.join(config.CHECKPOINT_DIR, "best_model.pt"))
                 print("New best model saved!")
             else:
@@ -91,7 +85,6 @@ def main():
                 print(f"Early stopping triggered after {epoch+1} epochs!")
                 break
         
-        # Save checkpoint
         torch.save({
             'epoch': epoch,
             'model_state_dict': model.state_dict(),

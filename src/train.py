@@ -17,7 +17,7 @@ def main():
     tokenizer = ZephyraTokenizer()
     print(f"Tokenizer loaded on [{device}]\n")
 
-    config.VOCAB_SIZE = tokenizer.get_vocab_size()
+    config.VOCAB_SIZE = tokenizer.getVocabSize()
     
     
     model = ZephyraModel(

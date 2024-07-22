@@ -1,25 +1,34 @@
 import torch
-import torch.nn.functional as F
-
-#This file contains the basic training script
+from torch.cuda.amp import GradScaler, autocast
+import config
 
 def train_epoch(model, dataloader, optimizer, device):
     model.train()
     total_loss = 0
-    for batch in dataloader:
+    scaler = GradScaler()
+    
+    for i, batch in enumerate(dataloader):
         batch = batch.to(device)
-        optimizer.zero_grad()
         
         # Create attention mask
         attention_mask = (batch != dataloader.dataset.tokenizer.get_pad_token_id()).float().unsqueeze(1).unsqueeze(2)
         attention_mask = (1.0 - attention_mask) * -10000.0
         
-        outputs = model(batch, attention_mask=attention_mask)
+        with autocast(enabled=config.USE_MIXED_PRECISION):
+            outputs = model(batch, attention_mask=attention_mask)
+            loss = F.cross_entropy(outputs.view(-1, outputs.size(-1)), batch.view(-1), ignore_index=dataloader.dataset.tokenizer.get_pad_token_id())
+            loss = loss / config.GRADIENT_ACCUMULATION_STEPS
+
+        scaler.scale(loss).backward()
         
-        # Only consider non-padded tokens for loss calculation
-        loss = F.cross_entropy(outputs.view(-1, outputs.size(-1)), batch.view(-1), ignore_index=dataloader.dataset.tokenizer.get_pad_token_id())
-        
-        loss.backward()
-        optimizer.step()
-        total_loss += loss.item()
+        if (i + 1) % config.GRADIENT_ACCUMULATION_STEPS == 0:
+            scaler.step(optimizer)
+            scaler.update()
+            optimizer.zero_grad()
+
+        total_loss += loss.item() * config.GRADIENT_ACCUMULATION_STEPS
+
     return total_loss / len(dataloader)
+
+# In the main function:
+optimizer = torch.optim.AdamW(model.parameters(), lr=config.LEARNING_RATE)

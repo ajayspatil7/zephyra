@@ -30,17 +30,24 @@ class TextDataset(Dataset):
 
 
 class ZephyraCoQADataset(Dataset):
-    def __init__(self, file_path, tokenizer, max_length=config.MAX_SEQ_LENGTH):
+    
+    
+    def __init__(self, file_path, tokenizer, max_length=1024):
         self.tokenizer = tokenizer
         self.max_length = max_length
-        self.data = self.load_data(file_path)
+        with open(file_path, 'r') as f:
+            self.data = json.load(f)
+
+
+    def __len__(self):
+        return len(self.data)
+        
+    
 
     def load_data(self, file_path):
         with open(file_path, 'r') as f:
             return json.load(f)
 
-    def __len__(self):
-        return len(self.data)
 
     def __getitem__(self, idx):
         item = self.data[idx]

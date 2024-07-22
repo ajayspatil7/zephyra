@@ -36,8 +36,19 @@ def split_dataset(input_file, train_file, val_file, val_ratio=0.1, seed=42):
     print(f"Validation examples: {len(val_data)}")
 
 # Usage
-input_file = './data/dataset/coqa.json'
-train_file = './data/dataset/coqa_train.json'
-val_file = './data/dataset/coqa_val.json'
+# for first time user uncomment the below line and run to save the training and val files
+# input_file = './data/dataset/coqa.json'
+# train_file = './data/dataset/coqa_train.json'
+# val_file = './data/dataset/coqa_val.json'
 
-split_dataset(input_file, train_file, val_file, val_ratio=0.1)
+# split_dataset(input_file, train_file, val_file, val_ratio=0.1)
+
+with open('./data/dataset/coqa_train.json', 'r') as f:
+    train_data = json.load(f)
+
+with open('./data/dataset/coqa_val.json', 'r') as f:
+    val_data = json.load(f)
+
+print(f"Training set size: {len(train_data)}")
+print(f"Validation set size: {len(val_data)}")
+print(f"First training example: {train_data[0]}")

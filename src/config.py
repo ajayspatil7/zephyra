@@ -1,6 +1,6 @@
-# This file contains the training arguments for the language model
 
-VOCAB_SIZE = 0
+# Training args
+VOCAB_SIZE = None
 HIDDEN_SIZE = 512
 NUM_LAYERS = 8
 NUM_ATTENTION_HEADS = 8
@@ -10,7 +10,15 @@ BATCH_SIZE = 8
 LEARNING_RATE = 5e-5
 NUM_EPOCHS = 15
 TRAIN_DATA_PATH = "./data/dataset/coqa_train.json"
-VAL_DATA_PATH = "./data/dataset/coqa_valx.json"
+VAL_DATA_PATH = "./data/dataset/coqa_val.json"
 GRADIENT_ACCUMULATION_STEPS = 1
 USE_MIXED_PRECISION = True
 
+# Validation args
+VALIDATION_INTERVAL = 1  
+PATIENCE = 3
+CHECKPOINT_DIR = "./checkpoints"
+LOG_DIR = "./logs"
+WEIGHT_DECAY = 0.01
+LR_SCHEDULER_FACTOR = 0.1
+LR_SCHEDULER_PATIENCE = 2

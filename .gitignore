@@ -8,3 +8,4 @@ project/claude
 project/experiments/.DS_Store
 .DS_Store
 src/utils/preprocesses_wikitext.py
+checkpoints/

@@ -23,6 +23,7 @@ class RotaryEmbedding(nn.Module):
             self.sin_cached[:, :, :seq_len, ...].to(x.device),
         )
 
+
 class RotaryAttention(nn.Module):
     def __init__(self, hidden_size, num_attention_heads, max_position_embeddings=2048):
         super().__init__()
@@ -46,6 +47,11 @@ class RotaryAttention(nn.Module):
         
         cos, sin = self.rotary_emb(v, seq_len=seq_length)
         q, k = applyRotaryPosEmbedding(q, k, cos, sin)
+        
+        if attention_mask is not None:
+            # Reshape attention_mask to [batch_size, 1, 1, seq_length]
+            attention_mask = attention_mask.unsqueeze(1).unsqueeze(2)
+            attention_mask = (1.0 - attention_mask) * -10000.0
         
         attn_output = sdpAttention(q, k, v, attention_mask)
         

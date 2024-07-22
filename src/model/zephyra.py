@@ -1,4 +1,3 @@
-# src/model/zephyra.py
 import torch.nn as nn
 from .layers import ZephyraBlock
 import torch.nn.functional as F
@@ -14,19 +13,14 @@ class ZephyraModel(nn.Module):
         self.ln_f = nn.LayerNorm(hidden_size)
         self.lm_head = nn.Linear(hidden_size, vocab_size, bias=False)
 
-    def forward(self, input_ids, attention_mask=None, labels=None):
+    def forward(self, input_ids, attention_mask=None):
         x = self.embed(input_ids)
         for layer in self.layers:
             x = layer(x, attention_mask)
         x = self.ln_f(x)
         logits = self.lm_head(x)
-
-        loss = None
-        if labels is not None:
-            # Shift so that tokens < n predict n
-            shift_logits = logits[..., :-1, :].contiguous()
-            shift_labels = labels[..., 1:].contiguous()
-            # Flatten the tokens
-            loss = F.cross_entropy(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1), ignore_index=-100)
-
+        
+        # Print shape for debugging
+        print(f"Model output shape: {logits.shape}")
+        
         return logits

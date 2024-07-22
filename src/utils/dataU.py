@@ -30,8 +30,14 @@ class TextDataset(Dataset):
 
 
 
+import torch
+from torch.utils.data import Dataset
+import json
+from src import config
+from src.tokenizer import ZephyraTokenizer
+
 class ZephyraCoQADataset(Dataset):
-    def __init__(self, file_path, tokenizer, max_length=1024):
+    def __init__(self, file_path, tokenizer, max_length):
         self.tokenizer = tokenizer
         self.max_length = max_length
         with open(file_path, 'r') as f:
@@ -43,15 +49,23 @@ class ZephyraCoQADataset(Dataset):
     def __getitem__(self, idx):
         item = self.data[idx]
         input_ids = torch.tensor(item['input_ids'], dtype=torch.long)
-        target_ids = torch.tensor(item['target_ids'], dtype=torch.long)
+        labels = torch.tensor(item['target_ids'], dtype=torch.long)
 
-        # Truncate input_ids if necessary
-        if len(input_ids) > self.max_length:
+        # Pad or truncate input_ids and labels
+        if len(input_ids) < self.max_length:
+            padding = torch.full((self.max_length - len(input_ids),), self.tokenizer.getPaddingTokenId(), dtype=torch.long)
+            input_ids = torch.cat([input_ids, padding])
+            labels = torch.cat([labels, padding])
+        else:
             input_ids = input_ids[:self.max_length]
+            labels = labels[:self.max_length]
+
+        attention_mask = (input_ids != self.tokenizer.getPaddingTokenId()).long()
 
         return {
             'input_ids': input_ids,
-            'labels': target_ids
+            'attention_mask': attention_mask,
+            'labels': labels
         }
     
     def get_pad_token_id(self):
@@ -59,21 +73,11 @@ class ZephyraCoQADataset(Dataset):
 
     @staticmethod
     def collate_fn(batch):
-        # Find max lengths
-        max_input_len = max(len(item['input_ids']) for item in batch)
-        max_label_len = max(len(item['labels']) for item in batch)
+        input_ids = torch.stack([item['input_ids'] for item in batch])
+        attention_mask = torch.stack([item['attention_mask'] for item in batch])
+        labels = torch.stack([item['labels'] for item in batch])
 
-        # Pad sequences
-        input_ids = [item['input_ids'].tolist() + [0] * (max_input_len - len(item['input_ids'])) for item in batch]
-        labels = [item['labels'].tolist() + [-100] * (max_label_len - len(item['labels'])) for item in batch]
-
-        # Create attention masks
-        attention_mask = [[1] * len(item['input_ids']) + [0] * (max_input_len - len(item['input_ids'])) for item in batch]
-
-        # Convert to tensors
-        input_ids = torch.tensor(input_ids, dtype=torch.long)
-        attention_mask = torch.tensor(attention_mask, dtype=torch.float)
-        labels = torch.tensor(labels, dtype=torch.long)
+        print(f"Collated shapes - Input: {input_ids.shape}, Attention: {attention_mask.shape}, Labels: {labels.shape}")
 
         return {
             'input_ids': input_ids,

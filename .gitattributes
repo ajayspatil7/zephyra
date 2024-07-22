@@ -1,1 +1,4 @@
 .pth filter=lfs diff=lfs merge=lfs -text
+data/dataset/coqa_train.json filter=lfs diff=lfs merge=lfs -text
+data/preprocessing/coqaPreprocessing.py filter=lfs diff=lfs merge=lfs -text
+data/raw/coqa-train-v1.0.json filter=lfs diff=lfs merge=lfs -text

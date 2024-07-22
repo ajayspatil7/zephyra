@@ -1,6 +1,7 @@
 import torch
 from torch.cuda.amp import GradScaler, autocast
 import config
+import torch.nn.functional as F
 
 def train_epoch(model, dataloader, optimizer, device):
     model.train()

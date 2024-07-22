@@ -53,6 +53,9 @@ class ZephyraCoQADataset(Dataset):
             'input_ids': input_ids,
             'labels': target_ids
         }
+    
+    def get_pad_token_id(self):
+        return self.tokenizer.getPaddingTokenId()
 
     @staticmethod
     def collate_fn(batch):

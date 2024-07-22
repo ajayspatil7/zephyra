@@ -9,8 +9,8 @@ MAX_SEQ_LENGTH = 512
 BATCH_SIZE = 8
 LEARNING_RATE = 5e-5
 NUM_EPOCHS = 15
-TRAIN_DATA_PATH = "./data/train.txt"
-VAL_DATA_PATH = "./data/validate.txt"
-GRADIENT_ACCUMULATION_STEPS = 2
+TRAIN_DATA_PATH = "./data/dataset/coqa_train.json"
+VAL_DATA_PATH = "./data/dataset/coqa_valx.json"
+GRADIENT_ACCUMULATION_STEPS = 1
 USE_MIXED_PRECISION = True
 

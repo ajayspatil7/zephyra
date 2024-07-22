@@ -13,7 +13,7 @@ Zephyra implements a mixed model architecture, combining different approaches to
 
 ## Project Structure
 
-The project is organized into several key directories:
+The project has several directories but the key directories among them are structured following:
 
 ```
 ZEPHYRA

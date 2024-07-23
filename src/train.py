@@ -1,13 +1,24 @@
 # To run this file on colab do the following,
 # After you clone the repo on colab,
-# Add the root dir to the PATH 'zephyra/'
-# Then change change your working dir to root folder '%cd zephyra'
-# Then, uncomment these below lines and run 'python src/train.py' to start the training
+# !git clone https://github.com/ajayspatil7/zephyra.git
 
+# Add the root dir to the PATH '/content/zephyra/'
+# import sys
+# sys.path.append('/content/zephyra/')
+
+# Then change change your working dir to root folder
+# %cd zephyra
+
+# Then, uncomment these below lines and run 'python src/train.py' to start the training
 # import sys
 # import os
 # project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 # sys.path.insert(0, project_root)
+
+
+
+
+# !pip install tiktoken tensorboardx
 
 import torch
 from torch.utils.data import DataLoader

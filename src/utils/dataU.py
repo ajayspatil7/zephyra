@@ -74,7 +74,7 @@ class ZephyraCoQADataset(Dataset):
         attention_mask = torch.stack([torch.cat([item['attention_mask'], torch.zeros(max_len - len(item['attention_mask']), dtype=torch.long)]) for item in batch])
         labels = torch.stack([torch.cat([item['labels'], torch.full((max_len - len(item['labels']),), -100, dtype=torch.long)]) for item in batch])
 
-        print(f"Collated shapes - Input: {input_ids.shape}, Attention: {attention_mask.shape}, Labels: {labels.shape}")
+        # print(f"Collated shapes - Input: {input_ids.shape}, Attention: {attention_mask.shape}, Labels: {labels.shape}")
 
         return {
             'input_ids': input_ids,

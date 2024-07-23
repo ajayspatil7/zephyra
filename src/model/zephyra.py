@@ -21,6 +21,6 @@ class ZephyraModel(nn.Module):
         logits = self.lm_head(x)
         
         # Print shape for debugging
-        print(f"Model output shape: {logits.shape}")
+        # print(f"Model output shape: {logits.shape}")
         
         return logits

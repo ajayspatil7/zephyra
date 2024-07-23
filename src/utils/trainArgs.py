@@ -21,7 +21,7 @@ def train_epoch(model, dataloader, optimizer, device, writer, epoch):
             labels = labels.view(-1)
             
             # Print shapes for debugging
-            print(f"Batch {i} - Outputs shape: {outputs.shape}, Labels shape: {labels.shape}")
+            # print(f"Batch {i} - Outputs shape: {outputs.shape}, Labels shape: {labels.shape}")
             
             loss = F.cross_entropy(outputs, labels, ignore_index=dataloader.dataset.get_pad_token_id())
             loss = loss / config.GRADIENT_ACCUMULATION_STEPS

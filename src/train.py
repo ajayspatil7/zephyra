@@ -1,3 +1,14 @@
+# To run this file on colab do the following,
+# After you clone the repo on colab,
+# Add the root dir to the PATH 'zephyra/'
+# Then change change your working dir to root folder '%cd zephyra'
+# Then, uncomment these below lines and run 'python src/train.py' to start the training
+
+# import sys
+# import os
+# project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+# sys.path.insert(0, project_root)
+
 import torch
 from torch.utils.data import DataLoader
 from torch.optim import AdamW
@@ -8,9 +19,9 @@ from utils.dataU import ZephyraCoQADataset
 from tokenizer.tokenizer import ZephyraTokenizer
 from utils.trainArgs import train_epoch, validate_epoch
 import config
-import os
 from tensorboardX import SummaryWriter
 import warnings
+import os
 
 warnings.filterwarnings('ignore')
 

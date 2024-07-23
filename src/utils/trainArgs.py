@@ -57,7 +57,7 @@ def validate_epoch(model, dataloader, device, writer, epoch):
             labels = labels.view(-1)
             
             # Print shapes for debugging
-            print(f"Validation Batch {i} - Outputs shape: {outputs.shape}, Labels shape: {labels.shape}")
+            # print(f"Validation Batch {i} - Outputs shape: {outputs.shape}, Labels shape: {labels.shape}")
             
             loss = F.cross_entropy(outputs, labels, ignore_index=dataloader.dataset.get_pad_token_id())
 

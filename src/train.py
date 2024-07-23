@@ -1,6 +1,8 @@
 import torch
 from torch.utils.data import DataLoader
-from torch.optim.lr_scheduler import ReduceLROnPlateau
+from torch.optim import AdamW
+from torch.optim.lr_scheduler import CosineAnnealingLR
+from torch.cuda.amp import GradScaler, autocast
 from model.zephyra import ZephyraModel
 from utils.dataU import ZephyraCoQADataset
 from tokenizer.tokenizer import ZephyraTokenizer
@@ -39,16 +41,18 @@ def main():
     print(f"Model loaded on : [{device}] \n")
 
     train_dataset = ZephyraCoQADataset(config.TRAIN_DATA_PATH, tokenizer, config.MAX_SEQ_LENGTH)
-    train_dataloader = DataLoader(train_dataset, batch_size=config.BATCH_SIZE, shuffle=True, collate_fn=ZephyraCoQADataset.collate_fn)
+    train_dataloader = DataLoader(train_dataset, batch_size=config.BATCH_SIZE,num_workers=4, shuffle=True, collate_fn=ZephyraCoQADataset.collate_fn)
     
     val_dataset = ZephyraCoQADataset(config.VAL_DATA_PATH, tokenizer, config.MAX_SEQ_LENGTH)
     val_dataloader = DataLoader(val_dataset, batch_size=config.BATCH_SIZE, shuffle=False, collate_fn=ZephyraCoQADataset.collate_fn)
     
     print(f"Dataset and Dataloader loaded on : [{device}] \n")
 
-    optimizer = torch.optim.AdamW(model.parameters(), lr=config.LEARNING_RATE, weight_decay=config.WEIGHT_DECAY)
-    scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=config.LR_SCHEDULER_FACTOR, patience=config.LR_SCHEDULER_PATIENCE)
+    optimizer = AdamW(model.parameters(), lr=config.LEARNING_RATE, weight_decay=config.WEIGHT_DECAY)
+    scheduler = CosineAnnealingLR(optimizer, T_max=config.NUM_EPOCHS)
     
+    scaler = GradScaler()
+
     os.makedirs(config.CHECKPOINT_DIR, exist_ok=True)
     os.makedirs(config.LOG_DIR, exist_ok=True)
     writer = SummaryWriter(log_dir=config.LOG_DIR)

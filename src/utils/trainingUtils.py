@@ -1,9 +1,12 @@
 import torch
 from torch.cuda.amp import GradScaler, autocast
-import config
+from src import config
 import torch.nn.functional as F
+from src.model.zephyra import ZephyraModel
+from tokenizer.tokenizer import ZephyraTokenizer
 
-def train_epoch(model, dataloader, optimizer, device, writer, epoch):
+
+def trainEpoch(model, dataloader, optimizer, device, writer, epoch):
     model.train()
     total_loss = 0
     scaler = GradScaler()
@@ -40,7 +43,7 @@ def train_epoch(model, dataloader, optimizer, device, writer, epoch):
 
     return total_loss / len(dataloader)
 
-def validate_epoch(model, dataloader, device, writer, epoch):
+def validateEpoch(model, dataloader, device, writer, epoch):
     model.eval()
     total_loss = 0
     
@@ -67,3 +70,59 @@ def validate_epoch(model, dataloader, device, writer, epoch):
             writer.add_scalar('Validation/Loss', loss.item(), epoch * len(dataloader) + i)
 
     return total_loss / len(dataloader)
+
+def loadBestModel(model_path):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
+    # Initialize the model
+    model = ZephyraModel(
+        vocab_size=config.VOCAB_SIZE,
+        hidden_size=config.HIDDEN_SIZE,
+        num_layers=config.NUM_LAYERS,
+        num_attention_heads=config.NUM_ATTENTION_HEADS,
+        intermediate_size=config.INTERMEDIATE_SIZE
+    )
+    
+    # Load the saved state dict
+    model.load_state_dict(torch.load(model_path, map_location=device))
+    
+    # Move the model to the appropriate device
+    model = model.to(device)
+    
+    # Set the model to evaluation mode
+    model.eval()
+    
+    return model, device
+
+def inference(model, tokenizer, input_text, device):
+    # Tokenize the input
+    inputs = tokenizer.encode(input_text, add_special_tokens=True)
+    input_ids = torch.tensor([inputs]).to(device)
+    
+    # Create attention mask
+    attention_mask = torch.ones_like(input_ids)
+    
+    # Perform inference
+    with torch.no_grad():
+        outputs = model(input_ids, attention_mask=attention_mask)
+    
+    # Get the predicted token ids
+    predicted_ids = torch.argmax(outputs, dim=-1)
+    
+    # Decode the output
+    predicted_text = tokenizer.decode(predicted_ids[0].tolist())
+    
+    return predicted_text
+
+# Inference Usage
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# tokenizer = ZephyraTokenizer()
+# input_text = "Your input text here"
+# output = inference(model, tokenizer, input_text, device)
+# print(f"Input: {input_text}")
+# print(f"Output: {output}")
+
+# Load model Usage
+# best_model_path = "./checkpoints/best_model.pt"
+# model, device = loadBestModel(best_model_path)
+# print(f"Model loaded on: {device}")

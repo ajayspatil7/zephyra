@@ -26,9 +26,9 @@ from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.cuda.amp import GradScaler, autocast
 from model.zephyra import ZephyraModel
-from utils.dataU import ZephyraCoQADataset
+from src.utils.dataUtils import ZephyraCoQADataset
 from tokenizer.tokenizer import ZephyraTokenizer
-from utils.trainArgs import train_epoch, validate_epoch
+from src.utils.trainingUtils import trainEpoch, validateEpoch
 import config
 from tensorboardX import SummaryWriter
 import warnings
@@ -89,11 +89,11 @@ def main():
         writer.add_scalar('Train/LearningRate', current_lr, epoch)
         print(f"Epoch {epoch+1}/{config.NUM_EPOCHS}, Learning Rate: {current_lr:.6f}")
 
-        train_loss = train_epoch(model, train_dataloader, optimizer, device, writer, epoch)
+        train_loss = trainEpoch(model, train_dataloader, optimizer, device, writer, epoch)
         print(f"Epoch {epoch+1}/{config.NUM_EPOCHS}, Train Loss: {train_loss:.4f}")
         
         if (epoch + 1) % config.VALIDATION_INTERVAL == 0:
-            val_loss = validate_epoch(model, val_dataloader, device, writer, epoch)
+            val_loss = validateEpoch(model, val_dataloader, device, writer, epoch)
             print(f"Epoch {epoch+1}/{config.NUM_EPOCHS}, Validation Loss: {val_loss:.4f}")
             
             scheduler.step(val_loss)

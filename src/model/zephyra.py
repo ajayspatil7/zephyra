@@ -3,7 +3,7 @@ from .layers import ZephyraBlock
 import torch.nn.functional as F
 
 class ZephyraModel(nn.Module):
-    def __init__(self, vocab_size, hidden_size, num_layers, num_attention_heads, intermediate_size):
+    def __init__(self, vocab_size=100277, hidden_size=512, num_layers=8, num_attention_heads=8, intermediate_size=2048):
         super().__init__()
         self.embed = nn.Embedding(vocab_size, hidden_size)
         self.layers = nn.ModuleList([

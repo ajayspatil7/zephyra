@@ -84,20 +84,20 @@ class ZephyraCoQADataset(Dataset):
 
 
 
-if __name__ == "__main__":
-    tokenizer = ZephyraTokenizer()
-    dataset = ZephyraCoQADataset('./data/dataset/coqa_train.json', tokenizer)
-    print(f"Dataset size: {len(dataset)}")
+# if __name__ == "__main__":
+#     tokenizer = ZephyraTokenizer()
+#     dataset = ZephyraCoQADataset('./data/dataset/coqa_train.json', tokenizer)
+#     print(f"Dataset size: {len(dataset)}")
 
-    # Test a single item
-    item = dataset[0]
-    print(f"Input IDs shape: {item['input_ids'].shape}")
-    print(f"Labels shape: {item['labels'].shape}")
+#     # Test a single item
+#     item = dataset[0]
+#     print(f"Input IDs shape: {item['input_ids'].shape}")
+#     print(f"Labels shape: {item['labels'].shape}")
 
-    # Test batch collation
-    from torch.utils.data import DataLoader
-    dataloader = DataLoader(dataset, batch_size=4, collate_fn=ZephyraCoQADataset.collate_fn)
-    batch = next(iter(dataloader))
-    print(f"Batch Input IDs shape: {batch['input_ids'].shape}")
-    print(f"Batch Attention Mask shape: {batch['attention_mask'].shape}")
-    print(f"Batch Labels shape: {batch['labels'].shape}")
+#     # Test batch collation
+#     from torch.utils.data import DataLoader
+#     dataloader = DataLoader(dataset, batch_size=4, collate_fn=ZephyraCoQADataset.collate_fn)
+#     batch = next(iter(dataloader))
+#     print(f"Batch Input IDs shape: {batch['input_ids'].shape}")
+#     print(f"Batch Attention Mask shape: {batch['attention_mask'].shape}")
+#     print(f"Batch Labels shape: {batch['labels'].shape}")

@@ -10,3 +10,4 @@ project/experiments/.DS_Store
 src/utils/preprocesses_wikitext.py
 checkpoints/
 logs/
+project/tests

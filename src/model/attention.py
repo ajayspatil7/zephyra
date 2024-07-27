@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import math
-from typing import Optional, Tuple
 
 class RotaryEmbedding(nn.Module):
     def __init__(self, dim, max_position_embeddings=2048, base=10000, device=None):
@@ -13,102 +12,131 @@ class RotaryEmbedding(nn.Module):
         self._set_cos_sin_cache(max_position_embeddings, device)
 
     def _set_cos_sin_cache(self, seq_len, device):
-        self.max_seq_len_cached = seq_len
-        t = torch.arange(self.max_seq_len_cached, device=device, dtype=self.inv_freq.dtype)
+        """
+        Compute and cache the cos and sin values for rotary embeddings.
+        """
+        t = torch.arange(seq_len, device=device).type_as(self.inv_freq)
         freqs = torch.einsum("i,j->ij", t, self.inv_freq)
         emb = torch.cat((freqs, freqs), dim=-1).to(device)
         self.register_buffer("cos_cached", emb.cos()[None, None, :, :], persistent=False)
         self.register_buffer("sin_cached", emb.sin()[None, None, :, :], persistent=False)
 
     def forward(self, x, seq_len=None):
+        """
+        Apply rotary embeddings to the input tensor.
+
+        Args:
+            x (torch.Tensor): Input tensor.
+            seq_len (int, optional): Sequence length. If None, uses x.shape[1].
+
+        Returns:
+            tuple: (cos, sin) tensors for rotary embedding computation.
+        """
+        if seq_len is None:
+            seq_len = x.shape[1]
+
         if seq_len > self.max_seq_len_cached:
             self._set_cos_sin_cache(seq_len, x.device)
+
         return (
             self.cos_cached[:, :, :seq_len, ...].to(x.device),
             self.sin_cached[:, :, :seq_len, ...].to(x.device),
         )
 
 def rotate_half(x):
+    """
+    Rotate half of the dimensions of the input tensor.
+
+    Args:
+        x (torch.Tensor): Input tensor.
+
+    Returns:
+        torch.Tensor: Tensor with half of its dimensions rotated.
+    """
     x1, x2 = x.chunk(2, dim=-1)
     return torch.cat((-x2, x1), dim=-1)
 
 def apply_rotary_pos_emb(q, k, cos, sin):
-    q_embed = (q * cos) + (rotate_half(q) * sin)
-    k_embed = (k * cos) + (rotate_half(k) * sin)
-    return q_embed, k_embed
+    """
+    Apply rotary positional embeddings to queries and keys.
+
+    Args:
+        q (torch.Tensor): Query tensor.
+        k (torch.Tensor): Key tensor.
+        cos (torch.Tensor): Cosine values for rotary embedding.
+        sin (torch.Tensor): Sine values for rotary embedding.
+
+    Returns:
+        tuple: (q_rotated, k_rotated) tensors with rotary embeddings applied.
+    """
+    q_rotated = (q * cos) + (rotate_half(q) * sin)
+    k_rotated = (k * cos) + (rotate_half(k) * sin)
+    return q_rotated, k_rotated
+
 
 class MultiQueryAttention(nn.Module):
-    def __init__(self, config):
+    
+    def __init__(self, hidden_size, num_heads, max_position_embeddings=2048, attention_dropout=0.1):
         super().__init__()
-        self.config = config
-        self.hidden_size = config.hidden_size
-        self.num_heads = config.num_attention_heads
-        self.head_dim = self.hidden_size // self.num_heads
-        self.max_position_embeddings = config.max_position_embeddings
+        self.hidden_size = hidden_size
+        self.num_heads = num_heads
+        self.head_dim = hidden_size // num_heads
 
-        if self.head_dim * self.num_heads != self.hidden_size:
-            raise ValueError(
-                f"hidden_size must be divisible by num_heads (got `hidden_size`: {self.hidden_size}"
-                f" and `num_heads`: {self.num_heads})."
-            )
+        self.q_proj = nn.Linear(hidden_size, hidden_size, bias=False)
+        self.k_proj = nn.Linear(hidden_size, self.head_dim, bias=False)
+        self.v_proj = nn.Linear(hidden_size, self.head_dim, bias=False)
+        self.o_proj = nn.Linear(hidden_size, hidden_size, bias=False)
 
-        self.q_proj = nn.Linear(self.hidden_size, self.hidden_size, bias=config.use_attention_bias)
-        self.k_proj = nn.Linear(self.hidden_size, self.head_dim, bias=config.use_attention_bias)
-        self.v_proj = nn.Linear(self.hidden_size, self.head_dim, bias=config.use_attention_bias)
-        self.o_proj = nn.Linear(self.hidden_size, self.hidden_size, bias=config.use_attention_bias)
+        self.rotary_emb = RotaryEmbedding(self.head_dim, max_position_embeddings)
+        self.attention_dropout = nn.Dropout(attention_dropout)
 
-        self.rotary_emb = RotaryEmbedding(
-            self.head_dim,
-            max_position_embeddings=self.max_position_embeddings,
-            base=config.rotary_emb_base,
-        )
+        self._reset_parameters()
 
-        self.attention_dropout = nn.Dropout(config.attention_probs_dropout_prob)
+    def _reset_parameters(self):
+        """
+        Initialize model parameters.
+        """
+        nn.init.xavier_uniform_(self.q_proj.weight)
+        nn.init.xavier_uniform_(self.k_proj.weight)
+        nn.init.xavier_uniform_(self.v_proj.weight)
+        nn.init.xavier_uniform_(self.o_proj.weight)
 
-    def _shape(self, tensor: torch.Tensor, seq_len: int, bsz: int):
-        return tensor.view(bsz, seq_len, self.num_heads, self.head_dim).transpose(1, 2).contiguous()
+    def forward(self, hidden_states, attention_mask=None, past_key_value=None):
+        """
+        Compute multi-query attention.
 
-    def forward(
-        self,
-        hidden_states: torch.Tensor,
-        attention_mask: Optional[torch.Tensor] = None,
-        past_key_value: Optional[Tuple[torch.Tensor]] = None,
-        output_attentions: bool = False,
-        use_cache: bool = False,
-    ) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[Tuple[torch.Tensor]]]:
+        Args:
+            hidden_states (torch.Tensor): Input tensor of shape (batch_size, seq_len, hidden_size).
+            attention_mask (torch.Tensor, optional): Attention mask of shape (batch_size, 1, 1, seq_len).
+            past_key_value (tuple, optional): Cached key and value tensors for incremental decoding.
+
+        Returns:
+            tuple: (attn_output, (key, value)) where attn_output is the output of the attention layer
+                   and (key, value) are the updated key and value for caching.
+        """
         bsz, q_len, _ = hidden_states.size()
 
-        query_states = self.q_proj(hidden_states).view(bsz, q_len, self.num_heads, self.head_dim).transpose(1, 2)
-        key_states = self.k_proj(hidden_states).view(bsz, q_len, 1, self.head_dim).transpose(1, 2)
-        value_states = self.v_proj(hidden_states).view(bsz, q_len, 1, self.head_dim).transpose(1, 2)
-
-        kv_seq_len = key_states.shape[-2]
-        if past_key_value is not None:
-            kv_seq_len += past_key_value[0].shape[-2]
-        cos, sin = self.rotary_emb(value_states, seq_len=kv_seq_len)
-        query_states, key_states = apply_rotary_pos_emb(query_states, key_states, cos, sin)
+        q = self.q_proj(hidden_states).view(bsz, q_len, self.num_heads, self.head_dim).transpose(1, 2)
+        k = self.k_proj(hidden_states).view(bsz, q_len, 1, self.head_dim).transpose(1, 2)
+        v = self.v_proj(hidden_states).view(bsz, q_len, 1, self.head_dim).transpose(1, 2)
 
         if past_key_value is not None:
-            # reuse k, v, self_attention
-            key_states = torch.cat([past_key_value[0], key_states], dim=2)
-            value_states = torch.cat([past_key_value[1], value_states], dim=2)
+            k = torch.cat([past_key_value[0], k], dim=2)
+            v = torch.cat([past_key_value[1], v], dim=2)
 
-        past_key_value = (key_states, value_states) if use_cache else None
+        cos, sin = self.rotary_emb(v, seq_len=k.shape[2])
+        q, k = apply_rotary_pos_emb(q, k, cos, sin)
 
-        attn_weights = torch.matmul(query_states, key_states.transpose(2, 3)) / math.sqrt(self.head_dim)
+        attn_weights = torch.matmul(q, k.transpose(-1, -2)) / math.sqrt(self.head_dim)
 
         if attention_mask is not None:
             attn_weights = attn_weights + attention_mask
-            attn_weights = torch.max(attn_weights, torch.tensor(torch.finfo(attn_weights.dtype).min))
 
         attn_weights = F.softmax(attn_weights, dim=-1)
         attn_weights = self.attention_dropout(attn_weights)
 
-        attn_output = torch.matmul(attn_weights, value_states)
+        attn_output = torch.matmul(attn_weights, v)
         attn_output = attn_output.transpose(1, 2).contiguous().view(bsz, q_len, self.hidden_size)
         attn_output = self.o_proj(attn_output)
 
-        if not output_attentions:
-            attn_weights = None
-
-        return attn_output, attn_weights, past_key_value
+        return attn_output, (k, v)

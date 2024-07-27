@@ -6,6 +6,7 @@ from .attention import MultiQueryAttention
 class ZephyraFeedForward(nn.Module):
     def __init__(self, config):
         super().__init__()
+        self.config = config
         self.fc1 = nn.Linear(config.hidden_size, config.intermediate_size)
         self.fc2 = nn.Linear(config.intermediate_size, config.hidden_size)
         self.activation = self.get_activation(config.hidden_act)

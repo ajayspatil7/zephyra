@@ -1,69 +1,194 @@
 import torch
 import torch.nn as nn
 from .embeddings import ZephyraEmbeddings
-from .layers import ZephyraLayer
+from .layers import ZephyraEncoder
 
-class ZephyraModel(nn.Module):
-    def __init__(self, vocab_size, hidden_size, num_layers, num_attention_heads, intermediate_size, max_position_embeddings, dropout_rate=0.1):
+# For loadinf a pretrained zephyra model
+class ZephyraPreTrainedModel(nn.Module):
+    """
+    An abstract class to handle weights initialization and a simple interface for downloading and loading pretrained models.
+    """
+
+    def __init__(self, config):
         super().__init__()
-        self.embeddings = ZephyraEmbeddings(vocab_size, hidden_size, max_position_embeddings, dropout_rate)
-        self.layers = nn.ModuleList([
-            ZephyraLayer(hidden_size, num_attention_heads, intermediate_size, attention_dropout=dropout_rate, hidden_dropout=dropout_rate)
-            for _ in range(num_layers)
-        ])
-        self.ln_f = nn.LayerNorm(hidden_size, eps=1e-12)
+        self.config = config
 
-    def forward(self, input_ids, attention_mask=None, token_type_ids=None, position_ids=None, past_key_values=None):
-        if attention_mask is None:
-            attention_mask = torch.ones_like(input_ids)
-        
-        extended_attention_mask = attention_mask.unsqueeze(1).unsqueeze(2)
-        extended_attention_mask = extended_attention_mask.to(dtype=next(self.parameters()).dtype)
-        extended_attention_mask = (1.0 - extended_attention_mask) * -10000.0
+    def _init_weights(self, module):
+        """Initialize the weights"""
+        if isinstance(module, nn.Linear):
+            module.weight.data.normal_(mean=0.0, std=self.config.initializer_range)
+            if module.bias is not None:
+                module.bias.data.zero_()
+        elif isinstance(module, nn.Embedding):
+            module.weight.data.normal_(mean=0.0, std=self.config.initializer_range)
+            if module.padding_idx is not None:
+                module.weight.data[module.padding_idx].zero_()
+        elif isinstance(module, nn.LayerNorm):
+            module.bias.data.zero_()
+            module.weight.data.fill_(1.0)
 
-        hidden_states = self.embeddings(input_ids, token_type_ids, position_ids)
-        
-        if past_key_values is None:
-            past_key_values = [None] * len(self.layers)
+    def tie_weights(self):
+        """
+        Tie the weights between the input embeddings and the output embeddings.
+        """
+        if hasattr(self, "get_output_embeddings") and hasattr(self, "get_input_embeddings"):
+            output_embeddings = self.get_output_embeddings()
+            if output_embeddings is not None:
+                self._tie_or_clone_weights(output_embeddings, self.get_input_embeddings())
 
-        all_hidden_states = ()
-        all_attentions = ()
-        for i, (layer, past_key_value) in enumerate(zip(self.layers, past_key_values)):
-            all_hidden_states += (hidden_states,)
-            
-            layer_outputs, past_key_value = layer(
-                hidden_states,
-                attention_mask=extended_attention_mask,
-                past_key_value=past_key_value
+    def _tie_or_clone_weights(self, output_embeddings, input_embeddings):
+        """Tie or clone module weights depending of whether we are using TorchScript or not"""
+        if self.config.torchscript:
+            output_embeddings.weight = nn.Parameter(input_embeddings.weight.clone())
+        else:
+            output_embeddings.weight = input_embeddings.weight
+
+        if hasattr(output_embeddings, "bias") and output_embeddings.bias is not None:
+            output_embeddings.bias.data = nn.functional.pad(
+                output_embeddings.bias.data,
+                (0, output_embeddings.weight.shape[0] - output_embeddings.bias.shape[0]),
+                "constant",
+                0,
             )
-            hidden_states = layer_outputs
+        if hasattr(output_embeddings, "out_features") and hasattr(input_embeddings, "num_embeddings"):
+            output_embeddings.out_features = input_embeddings.num_embeddings
 
-            all_attentions += (layer_outputs[1],)
+# The BOSS model aka Core of Zephyra
+class ZephyraModel(ZephyraPreTrainedModel):
+    def __init__(self, config):
+        super().__init__(config)
+        self.config = config
 
-        hidden_states = self.ln_f(hidden_states)
-        all_hidden_states += (hidden_states,)
+        self.embeddings = ZephyraEmbeddings(config)
+        self.encoder = ZephyraEncoder(config)
+
+        # Initialize weights and apply final processing
+        self.post_init()
+
+    def get_input_embeddings(self):
+        return self.embeddings.word_embeddings
+
+    def set_input_embeddings(self, value):
+        self.embeddings.word_embeddings = value
+
+    def forward(
+        self,
+        input_ids=None,
+        attention_mask=None,
+        token_type_ids=None,
+        position_ids=None,
+        inputs_embeds=None,
+        past_key_values=None,
+        use_cache=None,
+        output_hidden_states=None,
+        return_dict=None,
+    ):
+        output_hidden_states = (
+            output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
+        )
+        use_cache = use_cache if use_cache is not None else self.config.use_cache
+        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+
+        if input_ids is not None and inputs_embeds is not None:
+            raise ValueError("You cannot specify both input_ids and inputs_embeds at the same time")
+        elif input_ids is not None:
+            input_shape = input_ids.size()
+        elif inputs_embeds is not None:
+            input_shape = inputs_embeds.size()[:-1]
+        else:
+            raise ValueError("You have to specify either input_ids or inputs_embeds")
+
+        batch_size, seq_length = input_shape
+        device = input_ids.device if input_ids is not None else inputs_embeds.device
+
+        if attention_mask is None:
+            attention_mask = torch.ones(input_shape, device=device)
+        if token_type_ids is None:
+            token_type_ids = torch.zeros(input_shape, dtype=torch.long, device=device)
+
+        embedding_output = self.embeddings(
+            input_ids=input_ids,
+            position_ids=position_ids,
+            token_type_ids=token_type_ids,
+            inputs_embeds=inputs_embeds,
+            past_key_values_length=past_key_values[0][0].shape[2] if past_key_values is not None else 0,
+        )
+
+        encoder_outputs = self.encoder(
+            embedding_output,
+            attention_mask=attention_mask,
+            past_key_values=past_key_values,
+            use_cache=use_cache,
+            output_hidden_states=output_hidden_states,
+        )
+
+        return encoder_outputs
+
+# Zephyra for a specific task: Question Answering
+class ZephyraForQuestionAnswering(ZephyraPreTrainedModel):
+    def __init__(self, config):
+        super().__init__(config)
+        self.num_labels = config.num_labels
+        self.zephyra = ZephyraModel(config)
+        self.qa_outputs = nn.Linear(config.hidden_size, config.num_labels)
+        
+        # Initialize weights and apply final processing
+        self.post_init()
+
+    def forward(
+        self,
+        input_ids=None,
+        attention_mask=None,
+        token_type_ids=None,
+        position_ids=None,
+        inputs_embeds=None,
+        start_positions=None,
+        end_positions=None,
+        output_hidden_states=None,
+        return_dict=None,
+    ):
+        outputs = self.zephyra(
+            input_ids,
+            attention_mask=attention_mask,
+            token_type_ids=token_type_ids,
+            position_ids=position_ids,
+            inputs_embeds=inputs_embeds,
+            output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
+        )
+
+        sequence_output = outputs["last_hidden_state"]
+
+        logits = self.qa_outputs(sequence_output)
+        start_logits, end_logits = logits.split(1, dim=-1)
+        start_logits = start_logits.squeeze(-1).contiguous()
+        end_logits = end_logits.squeeze(-1).contiguous()
+
+        total_loss = None
+        if start_positions is not None and end_positions is not None:
+            # If we are on multi-GPU, split add a dimension
+            if len(start_positions.size()) > 1:
+                start_positions = start_positions.squeeze(-1)
+            if len(end_positions.size()) > 1:
+                end_positions = end_positions.squeeze(-1)
+            # sometimes the start/end positions are outside our model inputs, we ignore these terms
+            ignored_index = start_logits.size(1)
+            start_positions = start_positions.clamp(0, ignored_index)
+            end_positions = end_positions.clamp(0, ignored_index)
+
+            loss_fct = nn.CrossEntropyLoss(ignore_index=ignored_index)
+            start_loss = loss_fct(start_logits, start_positions)
+            end_loss = loss_fct(end_logits, end_positions)
+            total_loss = (start_loss + end_loss) / 2
+
+        if not return_dict:
+            output = (start_logits, end_logits) + outputs[2:]
+            return ((total_loss,) + output) if total_loss is not None else output
 
         return {
-            "last_hidden_state": hidden_states,
-            "past_key_values": past_key_values,
-            "hidden_states": all_hidden_states,
-            "attentions": all_attentions,
+            "loss": total_loss,
+            "start_logits": start_logits,
+            "end_logits": end_logits,
+            "hidden_states": outputs.get("hidden_states", None),
+            "attentions": outputs.get("attentions", None),
         }
-
-class ZephyraForSequenceClassification(nn.Module):
-    def __init__(self, vocab_size, hidden_size, num_layers, num_attention_heads, intermediate_size, max_position_embeddings, num_labels, dropout_rate=0.1):
-        super().__init__()
-        self.zephyra = ZephyraModel(vocab_size, hidden_size, num_layers, num_attention_heads, intermediate_size, max_position_embeddings, dropout_rate)
-        self.classifier = nn.Linear(hidden_size, num_labels)
-
-    def forward(self, input_ids, attention_mask=None, token_type_ids=None, position_ids=None, labels=None):
-        outputs = self.zephyra(input_ids, attention_mask, token_type_ids, position_ids)
-        pooled_output = outputs["last_hidden_state"][:, 0, :]
-        logits = self.classifier(pooled_output)
-        
-        loss = None
-        if labels is not None:
-            loss_fct = nn.CrossEntropyLoss()
-            loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
-        
-        return {"loss": loss,"logits": logits,"hidden_states": outputs.get("hidden_states"),"attentions": outputs.get("attentions"),}

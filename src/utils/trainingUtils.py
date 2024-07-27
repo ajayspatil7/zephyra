@@ -4,115 +4,73 @@ from src import config
 import torch.nn.functional as F
 from src.model.zephyra import ZephyraModel
 from tokenizer.tokenizer import ZephyraTokenizer
+import tqdm
+import torch
+from torch.cuda.amp import GradScaler, autocast
+import torch.nn.functional as F
+from tqdm import tqdm
+from sklearn.metrics import accuracy_score, f1_score
 
-
-def trainEpoch(model, dataloader, optimizer, device, writer, epoch):
+def train_epoch(model, dataloader, optimizer, device, scaler):
     model.train()
     total_loss = 0
-    scaler = GradScaler()
     
-    for i, batch in enumerate(dataloader):
-        input_ids = batch['input_ids'].to(device)
-        attention_mask = batch['attention_mask'].to(device)
-        labels = batch['labels'].to(device)
-
-        with autocast(enabled=config.USE_MIXED_PRECISION):
-            outputs = model(input_ids, attention_mask=attention_mask)
-            
-            # Reshape outputs and labels
-            outputs = outputs.view(-1, outputs.size(-1))
-            labels = labels.view(-1)
-            
-            # Print shapes for debugging
-            # print(f"Batch {i} - Outputs shape: {outputs.shape}, Labels shape: {labels.shape}")
-            
-            loss = F.cross_entropy(outputs, labels, ignore_index=dataloader.dataset.get_pad_token_id())
-            loss = loss / config.GRADIENT_ACCUMULATION_STEPS
+    for batch in tqdm(dataloader, desc="Training"):
+        batch = {k: v.to(device) for k, v in batch.items()}
+        
+        with autocast():
+            outputs = model(**batch)
+            loss = outputs["loss"]
 
         scaler.scale(loss).backward()
-        
-        if (i + 1) % config.GRADIENT_ACCUMULATION_STEPS == 0:
-            scaler.step(optimizer)
-            scaler.update()
-            optimizer.zero_grad()
+        scaler.step(optimizer)
+        scaler.update()
+        optimizer.zero_grad()
 
-        total_loss += loss.item() * config.GRADIENT_ACCUMULATION_STEPS
-        
-        # Log training loss
-        writer.add_scalar('Train/Loss', loss.item(), epoch * len(dataloader) + i)
+        total_loss += loss.item()
 
     return total_loss / len(dataloader)
 
-def validateEpoch(model, dataloader, device, writer, epoch):
+def evaluate(model, dataloader, device):
     model.eval()
     total_loss = 0
+    all_preds = []
+    all_labels = []
     
     with torch.no_grad():
-        for i, batch in enumerate(dataloader):
-            input_ids = batch['input_ids'].to(device)
-            attention_mask = batch['attention_mask'].to(device)
-            labels = batch['labels'].to(device)
-
-            outputs = model(input_ids, attention_mask=attention_mask)
+        for batch in tqdm(dataloader, desc="Evaluating"):
+            batch = {k: v.to(device) for k, v in batch.items()}
             
-            # Reshape outputs and labels
-            outputs = outputs.view(-1, outputs.size(-1))
-            labels = labels.view(-1)
-            
-            # Print shapes for debugging
-            # print(f"Validation Batch {i} - Outputs shape: {outputs.shape}, Labels shape: {labels.shape}")
-            
-            loss = F.cross_entropy(outputs, labels, ignore_index=dataloader.dataset.get_pad_token_id())
+            outputs = model(**batch)
+            loss = outputs["loss"]
+            logits = outputs["logits"]
 
             total_loss += loss.item()
-            
-            # Log validation loss
-            writer.add_scalar('Validation/Loss', loss.item(), epoch * len(dataloader) + i)
+            preds = torch.argmax(logits, dim=-1)
+            all_preds.extend(preds.cpu().numpy())
+            all_labels.extend(batch["labels"].cpu().numpy())
 
-    return total_loss / len(dataloader)
+    accuracy = accuracy_score(all_labels, all_preds)
+    f1 = f1_score(all_labels, all_preds, average='weighted')
+    
+    return total_loss / len(dataloader), accuracy, f1
 
-def loadBestModel(model_path):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    
-    # Initialize the model
-    model = ZephyraModel(
-        vocab_size=config.VOCAB_SIZE,
-        hidden_size=config.HIDDEN_SIZE,
-        num_layers=config.NUM_LAYERS,
-        num_attention_heads=config.NUM_ATTENTION_HEADS,
-        intermediate_size=config.INTERMEDIATE_SIZE
-    )
-    
-    # Load the saved state dict
-    model.load_state_dict(torch.load(model_path, map_location=device))
-    
-    # Move the model to the appropriate device
-    model = model.to(device)
-    
-    # Set the model to evaluation mode
-    model.eval()
-    
-    return model, device
+def save_checkpoint(model, optimizer, scheduler, epoch, loss, checkpoint_path):
+    torch.save({
+        'epoch': epoch,
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'scheduler_state_dict': scheduler.state_dict() if scheduler else None,
+        'loss': loss,
+    }, checkpoint_path)
 
-def inference(model, tokenizer, input_text, device):
-    # Tokenize the input
-    inputs = tokenizer.encode(input_text, add_special_tokens=True)
-    input_ids = torch.tensor([inputs]).to(device)
-    
-    # Create attention mask
-    attention_mask = torch.ones_like(input_ids)
-    
-    # Perform inference
-    with torch.no_grad():
-        outputs = model(input_ids, attention_mask=attention_mask)
-    
-    # Get the predicted token ids
-    predicted_ids = torch.argmax(outputs, dim=-1)
-    
-    # Decode the output
-    predicted_text = tokenizer.decode(predicted_ids[0].tolist())
-    
-    return predicted_text
+def load_checkpoint(model, optimizer, scheduler, checkpoint_path, device):
+    checkpoint = torch.load(checkpoint_path, map_location=device)
+    model.load_state_dict(checkpoint['model_state_dict'])
+    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    if scheduler and 'scheduler_state_dict' in checkpoint:
+        scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+    return checkpoint['epoch'], checkpoint['loss']
 
 # Inference Usage
 # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

@@ -4,3 +4,6 @@ data/preprocessing/coqaPreprocessing.py filter=lfs diff=lfs merge=lfs -text
 data/raw/coqa-train-v1.0.json filter=lfs diff=lfs merge=lfs -text
 data/dataset/coqa_val.json filter=lfs diff=lfs merge=lfs -text
 data/dataset/coqa.json filter=lfs diff=lfs merge=lfs -text
+data/dataset/tokenized_dev_data.pt filter=lfs diff=lfs merge=lfs -text
+data/dataset/tokenized_train_data.pt filter=lfs diff=lfs merge=lfs -text
+data/dataset/zephyra_tokenizer.pt filter=lfs diff=lfs merge=lfs -text

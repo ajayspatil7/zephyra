@@ -11,3 +11,4 @@ src/utils/preprocesses_wikitext.py
 checkpoints/
 logs/
 project/tests
+data/raw/coqa-dev-v1.0.json

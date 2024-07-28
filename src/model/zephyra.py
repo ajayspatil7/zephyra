@@ -3,24 +3,18 @@ import torch.nn as nn
 from .embeddings import ZephyraEmbeddings
 from .layers import ZephyraEncoder
 
-# For loadinf a pretrained zephyra model
 class ZephyraPreTrainedModel(nn.Module):
-    """
-    An abstract class to handle weights initialization and a simple interface for downloading and loading pretrained models.
-    """
-
     def __init__(self, config):
         super().__init__()
         self.config = config
 
     def _init_weights(self, module):
-        """Initialize the weights"""
         if isinstance(module, nn.Linear):
-            module.weight.data.normal_(mean=0.0, std=self.config.initializer_range)
+            module.weight.data.normal_(mean=0.0, std=self.config.INITIALIZER_RANGE)
             if module.bias is not None:
                 module.bias.data.zero_()
         elif isinstance(module, nn.Embedding):
-            module.weight.data.normal_(mean=0.0, std=self.config.initializer_range)
+            module.weight.data.normal_(mean=0.0, std=self.config.INITIALIZER_RANGE)
             if module.padding_idx is not None:
                 module.weight.data[module.padding_idx].zero_()
         elif isinstance(module, nn.LayerNorm):
@@ -28,17 +22,13 @@ class ZephyraPreTrainedModel(nn.Module):
             module.weight.data.fill_(1.0)
 
     def tie_weights(self):
-        """
-        Tie the weights between the input embeddings and the output embeddings.
-        """
         if hasattr(self, "get_output_embeddings") and hasattr(self, "get_input_embeddings"):
             output_embeddings = self.get_output_embeddings()
             if output_embeddings is not None:
                 self._tie_or_clone_weights(output_embeddings, self.get_input_embeddings())
 
     def _tie_or_clone_weights(self, output_embeddings, input_embeddings):
-        """Tie or clone module weights depending of whether we are using TorchScript or not"""
-        if self.config.torchscript:
+        if getattr(self.config, "USE_TORCHSCRIPT", False):
             output_embeddings.weight = nn.Parameter(input_embeddings.weight.clone())
         else:
             output_embeddings.weight = input_embeddings.weight
@@ -53,16 +43,19 @@ class ZephyraPreTrainedModel(nn.Module):
         if hasattr(output_embeddings, "out_features") and hasattr(input_embeddings, "num_embeddings"):
             output_embeddings.out_features = input_embeddings.num_embeddings
 
-# The BOSS model aka Core of Zephyra
+    def post_init(self):
+        """
+        Initialize weights and apply final processing if needed.
+        """
+        self.apply(self._init_weights)
+        self.tie_weights()
+
 class ZephyraModel(ZephyraPreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
         self.config = config
-
         self.embeddings = ZephyraEmbeddings(config)
         self.encoder = ZephyraEncoder(config)
-
-        # Initialize weights and apply final processing
         self.post_init()
 
     def get_input_embeddings(self):
@@ -84,10 +77,10 @@ class ZephyraModel(ZephyraPreTrainedModel):
         return_dict=None,
     ):
         output_hidden_states = (
-            output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
+            output_hidden_states if output_hidden_states is not None else self.config.OUTPUT_HIDDEN_STATES
         )
-        use_cache = use_cache if use_cache is not None else self.config.use_cache
-        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+        use_cache = use_cache if use_cache is not None else self.config.USE_CACHE
+        return_dict = return_dict if return_dict is not None else self.config.USE_RETURN_DICT
 
         if input_ids is not None and inputs_embeds is not None:
             raise ValueError("You cannot specify both input_ids and inputs_embeds at the same time")
@@ -124,15 +117,11 @@ class ZephyraModel(ZephyraPreTrainedModel):
 
         return encoder_outputs
 
-# Zephyra for a specific task: Question Answering
 class ZephyraForQuestionAnswering(ZephyraPreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
-        self.num_labels = config.num_labels
         self.zephyra = ZephyraModel(config)
-        self.qa_outputs = nn.Linear(config.hidden_size, config.num_labels)
-        
-        # Initialize weights and apply final processing
+        self.qa_outputs = nn.Linear(config.HIDDEN_SIZE, 2)  # 2 for start_logits and end_logits
         self.post_init()
 
     def forward(

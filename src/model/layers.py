@@ -4,21 +4,13 @@ from torch.utils.checkpoint import checkpoint
 from .attention import MultiQueryAttention
 
 class ZephyraFeedForward(nn.Module):
+    
     def __init__(self, config):
         super().__init__()
-        self.config = config
-        self.fc1 = nn.Linear(config.hidden_size, config.intermediate_size)
-        self.fc2 = nn.Linear(config.intermediate_size, config.hidden_size)
-        self.activation = self.get_activation(config.hidden_act)
-        self.dropout = nn.Dropout(config.hidden_dropout_prob)
-
-    def get_activation(self, activation_string):
-        if activation_string == "gelu":
-            return nn.GELU()
-        elif activation_string == "relu":
-            return nn.ReLU()
-        else:
-            raise ValueError(f"Unsupported activation: {activation_string}")
+        self.fc1 = nn.Linear(config.HIDDEN_SIZE, config.INTERMEDIATE_SIZE)
+        self.fc2 = nn.Linear(config.INTERMEDIATE_SIZE, config.HIDDEN_SIZE)
+        self.activation = nn.GELU() if config.HIDDEN_ACT == "gelu" else nn.ReLU()
+        self.dropout = nn.Dropout(config.HIDDEN_DROPOUT_PROB)
 
     def forward(self, hidden_states):
         hidden_states = self.fc1(hidden_states)
@@ -28,35 +20,25 @@ class ZephyraFeedForward(nn.Module):
         return hidden_states
 
 class ZephyraLayer(nn.Module):
+
     def __init__(self, config):
         super().__init__()
-        self.config = config
-        self.attention = MultiQueryAttention(
-            hidden_size=config.hidden_size,
-            num_heads=config.num_attention_heads,
-            max_position_embeddings=config.max_position_embeddings,
-            attention_dropout=config.attention_probs_dropout_prob
-        )
-        self.attention_output = nn.Linear(config.hidden_size, config.hidden_size)
-        self.attention_dropout = nn.Dropout(config.hidden_dropout_prob)
-        self.attention_norm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
+        self.attention = MultiQueryAttention(config)
+        self.attention_output = nn.Linear(config.HIDDEN_SIZE, config.HIDDEN_SIZE)
+        self.attention_dropout = nn.Dropout(config.HIDDEN_DROPOUT_PROB)
+        self.attention_norm = nn.LayerNorm(config.HIDDEN_SIZE, eps=config.LAYER_NORM_EPS)
         
         self.ffn = ZephyraFeedForward(config)
-        self.ffn_norm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
+        self.ffn_norm = nn.LayerNorm(config.HIDDEN_SIZE, eps=config.LAYER_NORM_EPS)
+        self.use_gradient_checkpointing = config.USE_GRADIENT_CHECKPOINTING if hasattr(config, 'USE_GRADIENT_CHECKPOINTING') else False
 
     def forward(self, hidden_states, attention_mask=None, past_key_value=None, use_cache=False):
-        # Self-attention
-        attention_output, present_key_value = self.attention(
-            hidden_states, 
-            attention_mask=attention_mask, 
-            past_key_value=past_key_value
-        )
+        attention_output, present_key_value = self.attention(hidden_states, attention_mask, past_key_value)
         attention_output = self.attention_output(attention_output)
         attention_output = self.attention_dropout(attention_output)
         attention_output = self.attention_norm(hidden_states + attention_output)
 
-        # Feed-forward network
-        if self.config.use_gradient_checkpointing and self.training:
+        if self.use_gradient_checkpointing and self.training:
             ffn_output = self.gradient_checkpointed_ffn(attention_output)
         else:
             ffn_output = self.ffn(attention_output)
@@ -73,14 +55,13 @@ class ZephyraLayer(nn.Module):
             def custom_forward(*inputs):
                 return module(*inputs)
             return custom_forward
-
         return checkpoint(create_custom_forward(self.ffn), attention_output)
 
 class ZephyraEncoder(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.config = config
-        self.layers = nn.ModuleList([ZephyraLayer(config) for _ in range(config.num_hidden_layers)])
+        self.layers = nn.ModuleList([ZephyraLayer(config) for _ in range(config.NUM_HIDDEN_LAYERS)])
 
     def forward(
         self,

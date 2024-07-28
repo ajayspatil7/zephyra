@@ -1,42 +1,102 @@
-# config.py
+import os
+import torch
 
+# Data paths
+TRAIN_DATA_PATH = './data/dataset/coqa_train.pt'
+VAL_DATA_PATH = './data/dataset/coqa_val.pt'
+
+# Model parameters
+VOCAB_SIZE = None  # This will be set dynamically based on the tokenizer
+HIDDEN_SIZE = 768
+NUM_HIDDEN_LAYERS = 12
+NUM_ATTENTION_HEADS = 12
+INTERMEDIATE_SIZE = 3072
+MAX_POSITION_EMBEDDINGS = 512
+HIDDEN_ACT = "gelu"
+HIDDEN_DROPOUT_PROB = 0.1
+ATTENTION_PROBS_DROPOUT_PROB = 0.1
+LAYER_NORM_EPS = 1e-12
+
+# Training parameters
+BATCH_SIZE = 8
+LEARNING_RATE = 5e-5
+WEIGHT_DECAY = 0.01
+NUM_EPOCHS = 10
+GRADIENT_ACCUMULATION_STEPS = 1
+MAX_GRAD_NORM = 1.0
+WARMUP_STEPS = 0
+
+# Optimizer parameters
+ADAM_EPSILON = 1e-8
+MIN_LEARNING_RATE = 1e-8
+
+# Early stopping
+PATIENCE = 3
+MIN_DELTA = 0.001
+
+# Mixed precision training
+USE_MIXED_PRECISION = True
+
+# Logging and saving
+LOG_DIR = './logs'
+CHECKPOINT_DIR = './checkpoints'
+LOGGING_STEPS = 100
+SAVE_STEPS = 1000
+
+# Ensure directories exist
+os.makedirs(LOG_DIR, exist_ok=True)
+os.makedirs(CHECKPOINT_DIR, exist_ok=True)
+
+# Device
+DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+# Tokenizer
+TOKENIZER_MODEL = "cl100k_base"
+
+# Evaluation
+EVAL_BATCH_SIZE = 16
+
+# Data processing
+MAX_QUERY_LENGTH = 64
+DOC_STRIDE = 128
+MAX_ANSWER_LENGTH = 30
+
+# Random seed for reproducibility
+SEED = 42
+
+# TensorBoard
+TENSORBOARD_UPDATE_FREQ = 100
+
+# Learning rate scheduler
+LR_SCHEDULER_FACTOR = 0.1
+LR_SCHEDULER_PATIENCE = 2
+
+# Checkpoint settings
+SAVE_TOTAL_LIMIT = 5
+
+# Model version
+MODEL_VERSION = "v1.0.0"
+
+# Debugging
+DEBUG = False
+
+# Distributed training
+WORLD_SIZE = 1
+DISTRIBUTED = False
+
+# Additional parameters
+TYPE_VOCAB_SIZE = 2
+PAD_TOKEN_ID = 0
+INITIALIZER_RANGE = 0.02
+USE_CACHE = True
+OUTPUT_HIDDEN_STATES = False
+USE_RETURN_DICT = True
+
+# Create a configuration class
 class ZephyraConfig:
-    # Model architecture
-    VOCAB_SIZE = None  # Set this based on your tokenizer
-    HIDDEN_SIZE = 512
-    NUM_LAYERS = 8
-    NUM_ATTENTION_HEADS = 8
-    INTERMEDIATE_SIZE = 2048
-
-    # Training args
-    MAX_SEQ_LENGTH = 256
-    BATCH_SIZE = 32
-    LEARNING_RATE = 5e-5
-    NUM_EPOCHS = 5
-    TRAIN_DATA_PATH = "./data/raw/coqa-train-v1.0.json"
-    VAL_DATA_PATH = "./data/raw/coqa-dev-v1.0.json"
-    GRADIENT_ACCUMULATION_STEPS = 1
-    USE_MIXED_PRECISION = True
-
-    # Validation args
-    VALIDATION_INTERVAL = 1
-    PATIENCE = 3
-    CHECKPOINT_DIR = "./checkpoints"
-    LOG_DIR = "./logs"
-    WEIGHT_DECAY = 0.01
-    LR_SCHEDULER_FACTOR = 0.1
-    LR_SCHEDULER_PATIENCE = 2
-
-    # Tokenizer settings
-    PAD_TOKEN_ID = 0
-    BOS_TOKEN_ID = 1
-    EOS_TOKEN_ID = 2
-    SEP_TOKEN_ID = 3
-
-    @classmethod
-    def update(cls, **kwargs):
+    def __init__(self, **kwargs):
         for key, value in kwargs.items():
-            if hasattr(cls, key):
-                setattr(cls, key, value)
-            else:
-                raise AttributeError(f"ZephyraConfig has no attribute '{key}'")
+            setattr(self, key, value)
+
+# Create the config object
+config = ZephyraConfig(**{k: v for k, v in globals().items() if not k.startswith('__') and k.isupper()})

@@ -1,2 +1,2 @@
-from .tokenizer import ZephyraTokeniser
+from .tokenizer import ZephyraTokenizer
 from .specialTokens import *

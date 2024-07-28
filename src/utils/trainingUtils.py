@@ -3,7 +3,7 @@ from torch.cuda.amp import GradScaler, autocast
 from src import config
 import torch.nn.functional as F
 from src.model.zephyra import ZephyraModel
-from tokenizer.tokenizer import ZephyraTokenizer
+from tokenizers.tokenizer import ZephyraTokenizer
 import tqdm
 import torch
 from torch.cuda.amp import GradScaler, autocast

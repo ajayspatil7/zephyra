@@ -2,7 +2,7 @@
 import torch
 from torch.utils.data import Dataset
 import json
-from src.tokenizer import ZephyraTokenizer
+from src.tokenizers import ZephyraTokenizer
 
 class TextDataset(Dataset):
     def __init__(self, file_path, tokenizer, max_length):

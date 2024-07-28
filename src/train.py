@@ -24,7 +24,7 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.cuda.amp import GradScaler
 from transformers import get_linear_schedule_with_warmup
 from model.zephyra import ZephyraForSequenceClassification
-from tokenizer import ZephyraTokenizer
+from tokenizers import ZephyraTokenizer
 from src.utils.dataUtils import ZephyraCoQADataset
 from src.utils.trainingUtils import train_epoch, evaluate, save_checkpoint, load_checkpoint
 import config

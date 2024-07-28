@@ -5,7 +5,7 @@ import os
 
 import torch
 from model.zephyra import ZephyraModel
-from tokenizer.tokenizer import ZephyraTokenizer
+from tokenizers.tokenizer import ZephyraTokenizer
 
 def load_and_test_model(model_path):
     model = ZephyraModel(vocab_size=100277, hidden_size=512, num_layers=8, num_attention_heads=8, intermediate_size=2048)

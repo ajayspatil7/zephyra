@@ -1,159 +1,170 @@
-# To run this file on colab do the following,
-# After you clone the repo on colab,
-# !git clone https://github.com/ajayspatil7/zephyra.git
-
-# Add the root dir to the PATH '/content/zephyra/'
-# import sys
-# sys.path.append('/content/zephyra/')
-
-# Then change change your working dir to root folder
-# %cd zephyra
-
-# Then, uncomment these below lines and run 'python src/train.py' to start the training
-# import sys
-# import os
-# project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-# sys.path.insert(0, project_root)
-# !pip install tiktoken tensorboardx
-
+import sys
+import os
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, project_root)
 
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, TensorDataset, Dataset
 from torch.optim import AdamW
-from torch.optim.lr_scheduler import CosineAnnealingLR
-from torch.cuda.amp import GradScaler
-from transformers import get_linear_schedule_with_warmup
-from model.zephyra import ZephyraForSequenceClassification
-from tokenizers import ZephyraTokenizer
-from src.utils.dataUtils import ZephyraCoQADataset
-from src.utils.trainingUtils import train_epoch, evaluate, save_checkpoint, load_checkpoint
-import config
-import os
-import logging
-from tqdm import tqdm
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from tensorboardX import SummaryWriter
+from src.model.zephyra import ZephyraForQuestionAnswering
+from src.tokenizers.tokenizer import ZephyraTokenizer
+from src.utils.trainingUtils import train, evaluate, save_checkpoint, load_checkpoint, save_best_model
+import src.config as config
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+print("\nImporting modules: [Complete]\n")
+
+class CoQADataset(Dataset):
+    def __init__(self, data_path, tokenizer, max_length):
+        self.data = torch.load(data_path)
+        self.tokenizer = tokenizer
+        self.max_length = max_length
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        item = self.data[idx]
+        context = item['context']
+        question = item['question']
+        answer = item['answer']
+        
+        # Tokenize input
+        inputs = self.tokenizer.encode_plus(
+            question,
+            context,
+            add_special_tokens=True,
+            max_length=self.max_length,
+            padding='max_length',
+            truncation=True,
+            return_tensors='pt'
+        )
+
+        # Get start and end positions
+        answer_start = item['answer_start']
+        answer_end = answer_start + len(answer)
+
+        # Convert answer positions to token positions
+        char_to_token = inputs.char_to_token(0)  # 0 for the first sequence
+        if answer_start == -1 or answer_end == -1:
+            start_position = end_position = 0  # set to [CLS] token for impossible answers
+        else:
+            start_position = char_to_token(answer_start)
+            end_position = char_to_token(answer_end - 1)
+
+            # If the answer is truncated, set positions to 0
+            if start_position is None:
+                start_position = end_position = 0
+            elif end_position is None:
+                end_position = start_position
+
+        return {
+            'input_ids': inputs['input_ids'].squeeze(),
+            'attention_mask': inputs['attention_mask'].squeeze(),
+            'start_positions': torch.tensor(start_position, dtype=torch.long),
+            'end_positions': torch.tensor(end_position, dtype=torch.long)
+        }
+    
+
+def load_preprocessed_data(file_path):
+    data = torch.load(file_path)
+    input_ids = data['input_ids']
+    attention_mask = data['attention_mask']
+    start_positions = data['start_positions']
+    end_positions = data['end_positions']
+    return TensorDataset(input_ids, attention_mask, start_positions, end_positions)
 
 def main():
-    # Set up device
+    # Set device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    logger.info(f"Using device: {device}")
-
-    # Initialize tensorboard writer
-    writer = SummaryWriter(log_dir=config.LOG_DIR)
+    print(f"\nDevice set to: [{device}]\n")
 
     # Initialize tokenizer
     tokenizer = ZephyraTokenizer()
+    print("\nTokenizer initialized: [Complete]\n")
 
-    # Load datasets
-    train_dataset = ZephyraCoQADataset(config.TRAIN_DATA_PATH, tokenizer, config.MAX_SEQ_LENGTH)
-    val_dataset = ZephyraCoQADataset(config.VAL_DATA_PATH, tokenizer, config.MAX_SEQ_LENGTH)
-
-    # Create dataloaders
-    train_dataloader = DataLoader(train_dataset, batch_size=config.BATCH_SIZE, shuffle=True, num_workers=4, pin_memory=True)
-    val_dataloader = DataLoader(val_dataset, batch_size=config.BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=True)
+    # Update vocabulary size in config
+    config.VOCAB_SIZE = tokenizer.getVocabSize()
+    print(f"\nVocabulary size: [{config.VOCAB_SIZE}]\n")
 
     # Initialize model
-    model = ZephyraForSequenceClassification(
-        vocab_size=tokenizer.vocab_size,
-        hidden_size=config.HIDDEN_SIZE,
-        num_layers=config.NUM_LAYERS,
-        num_attention_heads=config.NUM_ATTENTION_HEADS,
-        intermediate_size=config.INTERMEDIATE_SIZE,
-        max_position_embeddings=config.MAX_SEQ_LENGTH,
-        num_labels=config.NUM_LABELS,
-        dropout_rate=config.DROPOUT_RATE
-    ).to(device)
+    model = ZephyraForQuestionAnswering(config).to(device)
+    print("\nModel initialized and moved to device: [Complete]\n")
 
-    # Initialize optimizer and scheduler
+    # Load preprocessed datasets
+    train_dataset = load_preprocessed_data(config.TRAIN_DATA_PATH)
+    val_dataset = load_preprocessed_data(config.VAL_DATA_PATH)
+    print("\nPreprocessed datasets loaded: [Complete]\n")
+
+    # Create data loaders
+    train_dataloader = DataLoader(train_dataset, batch_size=config.BATCH_SIZE, shuffle=True)
+    val_dataloader = DataLoader(val_dataset, batch_size=config.BATCH_SIZE, shuffle=False)
+    print("\nDataLoaders created: [Complete]\n")
+
+    # Initialize optimizer
     optimizer = AdamW(model.parameters(), lr=config.LEARNING_RATE, weight_decay=config.WEIGHT_DECAY)
-    scheduler = get_linear_schedule_with_warmup(
-        optimizer, 
-        num_warmup_steps=config.WARMUP_STEPS, 
-        num_training_steps=len(train_dataloader) * config.NUM_EPOCHS
-    )
+    print("\nOptimizer initialized: [Complete]\n")
 
-    # Initialize gradient scaler for mixed precision training
-    scaler = GradScaler()
+    # Initialize learning rate scheduler
+    scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=2, verbose=True)
+    print("\nLearning rate scheduler initialized: [Complete]\n")
 
-    # Load checkpoint if resuming training
+    # Initialize TensorBoard writer
+    writer = SummaryWriter(log_dir=config.LOG_DIR)
+    print(f"\nTensorBoard writer initialized. Logs will be saved to: [{config.LOG_DIR}]\n")
+
+    # Set up checkpointing
+    checkpoint_path = os.path.join(config.CHECKPOINT_DIR, 'checkpoint.pt')
+    best_model_path = os.path.join(config.CHECKPOINT_DIR, 'best_model.pt')
+    print(f"\nCheckpoint path set to: [{checkpoint_path}]\n")
+    print(f"\nBest model path set to: [{best_model_path}]\n")
+
+    # Load checkpoint if it exists
     start_epoch = 0
-    if config.RESUME_FROM_CHECKPOINT and os.path.exists(config.RESUME_CHECKPOINT_PATH):
-        start_epoch, _ = load_checkpoint(model, optimizer, scheduler, config.RESUME_CHECKPOINT_PATH, device)
-        logger.info(f"Resuming from epoch {start_epoch}")
+    best_f1 = 0
+    if os.path.exists(checkpoint_path):
+        start_epoch, _ = load_checkpoint(model, optimizer, checkpoint_path)
+        print(f"\nCheckpoint loaded. Resuming from epoch: [{start_epoch}]\n")
+    else:
+        print("\nNo checkpoint found. Starting training from scratch.\n")
 
-    # Training loop
-    best_val_loss = float('inf')
-    global_step = 0
+    print("\nStarting training loop\n")
     for epoch in range(start_epoch, config.NUM_EPOCHS):
-        logger.info(f"Epoch {epoch + 1}/{config.NUM_EPOCHS}")
+        print(f"\n{'='*20} Epoch {epoch+1}/{config.NUM_EPOCHS} {'='*20}\n")
+        
+        train_loss = train(model, train_dataloader, optimizer, device, epoch, writer)
+        print(f"\nTraining for epoch {epoch+1} completed. Train Loss: [{train_loss:.4f}]\n")
+        
+        val_loss, exact_match, f1_score = evaluate(model, val_dataloader, device, epoch, writer)
+        print(f"\nValidation for epoch {epoch+1} completed:")
+        print(f"Validation Loss: [{val_loss:.4f}]")
+        print(f"Exact Match: [{exact_match:.4f}]")
+        print(f"F1 Score: [{f1_score:.4f}]\n")
 
-        # Train
-        model.train()
-        epoch_loss = 0
-        for batch in tqdm(train_dataloader, desc="Training"):
-            batch = {k: v.to(device) for k, v in batch.items()}
-            
-            with torch.cuda.amp.autocast():
-                outputs = model(**batch)
-                loss = outputs["loss"]
+        # Checkpoint saving
+        save_checkpoint(model, optimizer, epoch, val_loss, checkpoint_path)
+        print(f"\nCheckpoint saved for epoch {epoch+1}\n")
 
-            scaler.scale(loss).backward()
-            
-            if (global_step + 1) % config.GRADIENT_ACCUMULATION_STEPS == 0:
-                scaler.step(optimizer)
-                scaler.update()
-                optimizer.zero_grad()
-                scheduler.step()
+        # Best model saving
+        if f1_score > best_f1:
+            best_f1 = f1_score
+            save_best_model(model, best_model_path)
+            print(f"\nNew best model saved with F1 Score: [{best_f1:.4f}]\n")
 
-            epoch_loss += loss.item()
-            global_step += 1
+        # Learning rate scheduling
+        scheduler.step(val_loss)
+        print(f"\nLearning rate adjusted. Current LR: [{optimizer.param_groups[0]['lr']:.6f}]\n")
 
-            # Log training progress
-            if global_step % config.LOGGING_STEPS == 0:
-                writer.add_scalar('Train/Loss', loss.item(), global_step)
-                writer.add_scalar('Train/LearningRate', scheduler.get_last_lr()[0], global_step)
+        # Early stopping check
+        if optimizer.param_groups[0]['lr'] < config.MIN_LEARNING_RATE:
+            print("\nLearning rate too small. Stopping training.\n")
+            break
 
-        avg_train_loss = epoch_loss / len(train_dataloader)
-        logger.info(f"Average train loss: {avg_train_loss:.4f}")
-        writer.add_scalar('Train/EpochLoss', avg_train_loss, epoch)
-
-        # Validate
-        val_loss, val_accuracy, val_f1 = evaluate(model, val_dataloader, device)
-        logger.info(f"Validation loss: {val_loss:.4f}, Accuracy: {val_accuracy:.4f}, F1: {val_f1:.4f}")
-
-        # Log validation results
-        writer.add_scalar('Validation/Loss', val_loss, epoch)
-        writer.add_scalar('Validation/Accuracy', val_accuracy, epoch)
-        writer.add_scalar('Validation/F1', val_f1, epoch)
-
-        # Save checkpoint
-        checkpoint_path = os.path.join(config.CHECKPOINT_DIR, f"checkpoint_epoch_{epoch+1}.pt")
-        save_checkpoint(model, optimizer, scheduler, epoch + 1, val_loss, checkpoint_path)
-
-        # Save best model
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
-            best_model_path = os.path.join(config.CHECKPOINT_DIR, "best_model.pt")
-            torch.save(model.state_dict(), best_model_path)
-            logger.info(f"New best model saved to {best_model_path}")
-
-        # Early stopping
-        if epoch - start_epoch >= config.EARLY_STOPPING_PATIENCE:
-            if val_loss > best_val_loss:
-                logger.info(f"Validation loss hasn't improved for {config.EARLY_STOPPING_PATIENCE} epochs. Stopping training.")
-                break
-
-        # Remove old checkpoints if necessary
-        if config.SAVE_TOTAL_LIMIT:
-            checkpoints = sorted([f for f in os.listdir(config.CHECKPOINT_DIR) if f.startswith("checkpoint_epoch_")])
-            if len(checkpoints) > config.SAVE_TOTAL_LIMIT:
-                os.remove(os.path.join(config.CHECKPOINT_DIR, checkpoints[0]))
-
-    logger.info("Training complete!")
+    print("\nTraining completed.\n")
     writer.close()
+    print("\nTensorBoard writer closed.\n")
 
 if __name__ == "__main__":
     main()
+    print("\nScript execution completed.\n")

@@ -12,3 +12,5 @@ checkpoints/
 logs/
 project/tests
 data/raw/coqa-dev-v1.0.json
+data/dataset/coqa_val.pt
+data/dataset/coqa_train.pt

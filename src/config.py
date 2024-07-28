@@ -40,20 +40,3 @@ class ZephyraConfig:
                 setattr(cls, key, value)
             else:
                 raise AttributeError(f"ZephyraConfig has no attribute '{key}'")
-
-# Usage example
-# if __name__ == "__main__":
-#     print("Default configuration:")
-#     for key, value in ZephyraConfig.__dict__.items():
-#         if not key.startswith("__") and not callable(value):
-#             print(f"{key} = {value}")
-
-#     print("\nUpdating configuration:")
-#     ZephyraConfig.update(
-#         VOCAB_SIZE=30000,
-#         HIDDEN_SIZE=768,
-#         NUM_EPOCHS=3
-#     )
-#     print(f"VOCAB_SIZE = {ZephyraConfig.VOCAB_SIZE}")
-#     print(f"HIDDEN_SIZE = {ZephyraConfig.HIDDEN_SIZE}")
-#     print(f"NUM_EPOCHS = {ZephyraConfig.NUM_EPOCHS}")

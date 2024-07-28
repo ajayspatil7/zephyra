@@ -93,12 +93,3 @@ class ZephyraTokeniser:
     def convert_id_to_token(self, id):
         return self.inv_vocab.get(id, "<unk>")
 
-# Example usage
-# tokenizer = ZephyraTokeniser()
-# text = "Hello, how are you?"
-# encoded = tokenizer.encode(text, max_length=10)
-# decoded = tokenizer.decode(encoded)
-
-# print("Original Text:", text)
-# print("Encoded Text:", encoded)
-# print("Decoded Text:", decoded)

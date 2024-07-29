@@ -4,40 +4,57 @@ from tqdm import tqdm
 from torch.cuda.amp import GradScaler, autocast
 from src import config
 import os
+from torch.utils.data import DataLoader, TensorDataset, Dataset
+
+
+class CoQADataset(Dataset):
+    def __init__(self, inputs_path, targets_path, max_len):
+        self.inputs = torch.load(inputs_path)
+        self.targets = torch.load(targets_path)
+        self.max_len = max_len
+
+        # Ensure inputs and targets are dictionaries
+        if not isinstance(self.inputs, dict):
+            raise TypeError("Loaded inputs data is not a dictionary.")
+        if not isinstance(self.targets, dict):
+            raise TypeError("Loaded targets data is not a dictionary.")
+
+        # Ensure 'inputs' and 'targets' keys are present
+        if 'inputs' not in self.inputs or 'targets' not in self.targets:
+            raise KeyError("'inputs' or 'targets' key missing in the data.")
+
+    def __len__(self):
+        # Ensure data is indexed correctly
+        return len(self.inputs['inputs'])
+
+    def __getitem__(self, idx):
+        return {
+            'input': self.inputs['inputs'][idx],
+            'target': self.targets['targets'][idx]
+        }
+
 
 def train(model, dataloader, optimizer, device, epoch, writer):
     model.train()
     total_loss = 0
-    scaler = GradScaler()
-    
-    progress_bar = tqdm(dataloader, desc=f"Training Epoch {epoch}")
-    for batch in progress_bar:
+    for batch in dataloader:
         input_ids = batch['input_ids'].to(device)
         attention_mask = batch['attention_mask'].to(device)
         start_positions = batch['start_positions'].to(device)
         end_positions = batch['end_positions'].to(device)
 
         optimizer.zero_grad()
-
-        with autocast(enabled=config.USE_MIXED_PRECISION):
-            outputs = model(
-                input_ids=input_ids,
-                attention_mask=attention_mask,
-                start_positions=start_positions,
-                end_positions=end_positions
-            )
-            loss = outputs['loss']
-
-        scaler.scale(loss).backward()
-        scaler.step(optimizer)
-        scaler.update()
+        outputs = model(input_ids=input_ids, attention_mask=attention_mask, start_positions=start_positions, end_positions=end_positions)
+        loss = outputs.loss
+        loss.backward()
+        optimizer.step()
 
         total_loss += loss.item()
-        progress_bar.set_postfix({'loss': loss.item()})
 
     avg_loss = total_loss / len(dataloader)
-    writer.add_scalar('Train/Loss', avg_loss, epoch)
+    writer.add_scalar('Training Loss', avg_loss, epoch)
     return avg_loss
+
 
 def evaluate(model, dataloader, device, epoch, writer):
     model.eval()
@@ -136,3 +153,13 @@ def save_best_model(model, filename):
 
 def decode_predictions(tokenizer, context, start_pred, end_pred):
     return tokenizer.decode(context[start_pred:end_pred+1])
+
+
+def main():
+    
+    train = CoQADataset()
+
+
+if __name__ == "__main__":
+    main()
+    print("\nScript execution completed.\n")

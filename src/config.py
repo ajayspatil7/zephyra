@@ -2,16 +2,22 @@ import os
 import torch
 
 # Data paths
-TRAIN_DATA_PATH = './data/dataset/coqa_train.pt'
-VAL_DATA_PATH = './data/dataset/coqa_val.pt'
+TRAIN_INPUT_PATH = './data/datasets/train_inputs.pt'
+TRAIN_TARGET_PATH = './data/datasets/train_targets.pt'
+VAL_INPUT_PATH = './data/datasets/dev_inputs.pt'
+VAL_TARGET_PATH = './data/datasets/dev_targets.pt'
+
+TRAIN_PATH = "./data/datasets/train.pt"
+VAL_PATH = "./data/datasets/dev.pt"
 
 # Model parameters
-VOCAB_SIZE = None  # This will be set dynamically based on the tokenizer
+VOCAB_SIZE = 24710  # This will be set dynamically based on the tokenizer
 HIDDEN_SIZE = 768
 NUM_HIDDEN_LAYERS = 12
 NUM_ATTENTION_HEADS = 12
 INTERMEDIATE_SIZE = 3072
 MAX_POSITION_EMBEDDINGS = 512
+MAX_LEN = 512
 HIDDEN_ACT = "gelu"
 HIDDEN_DROPOUT_PROB = 0.1
 ATTENTION_PROBS_DROPOUT_PROB = 0.1

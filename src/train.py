@@ -1,100 +1,45 @@
 import sys
 import os
+import warnings
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
+warnings.filterwarnings('ignore')
 
+import warnings
 import torch
-from torch.utils.data import DataLoader, TensorDataset, Dataset
+from torch.utils.data import DataLoader, Dataset
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from tensorboardX import SummaryWriter
 from src.model.zephyra import ZephyraForQuestionAnswering
-from src.tokeniser.zephyratokeniser import ZephyraTokenizer
-from src.utils.trainingUtils import train, evaluate, save_checkpoint, load_checkpoint, save_best_model
-import src.config as config
+# from src.tokeniser.zephyratokeniser import ZephyraTokenizer
+from src.utils.trainingUtils import train, evaluate, save_checkpoint, load_checkpoint, save_best_model, CoQADataset
 
-print("\nImporting modules: [Complete]\n")
-
-class CoQADataset(Dataset):
-    def __init__(self, data_path, tokenizer, max_length):
-        self.data = torch.load(data_path)
-        self.tokenizer = tokenizer
-        self.max_length = max_length
-
-    def __len__(self):
-        return len(self.data)
-
-    def __getitem__(self, idx):
-        item = self.data[idx]
-        context = item['context']
-        question = item['question']
-        answer = item['answer']
-        
-        # Tokenize input
-        inputs = self.tokenizer.encode_plus(
-            question,
-            context,
-            add_special_tokens=True,
-            max_length=self.max_length,
-            padding='max_length',
-            truncation=True,
-            return_tensors='pt'
-        )
-
-        # Get start and end positions
-        answer_start = item['answer_start']
-        answer_end = answer_start + len(answer)
-
-        # Convert answer positions to token positions
-        char_to_token = inputs.char_to_token(0)  # 0 for the first sequence
-        if answer_start == -1 or answer_end == -1:
-            start_position = end_position = 0  # set to [CLS] token for impossible answers
-        else:
-            start_position = char_to_token(answer_start)
-            end_position = char_to_token(answer_end - 1)
-
-            # If the answer is truncated, set positions to 0
-            if start_position is None:
-                start_position = end_position = 0
-            elif end_position is None:
-                end_position = start_position
-
-        return {
-            'input_ids': inputs['input_ids'].squeeze(),
-            'attention_mask': inputs['attention_mask'].squeeze(),
-            'start_positions': torch.tensor(start_position, dtype=torch.long),
-            'end_positions': torch.tensor(end_position, dtype=torch.long)
-        }
-    
-
-def load_preprocessed_data(file_path):
-    data = torch.load(file_path)
-    input_ids = data['input_ids']
-    attention_mask = data['attention_mask']
-    start_positions = data['start_positions']
-    end_positions = data['end_positions']
-    return TensorDataset(input_ids, attention_mask, start_positions, end_positions)
 
 def main():
+    # Configuration
+    import src.config as config
+    
+    train_data = torch.load(config.TRAIN_INPUT_PATH)
+    print(type(train_data))  # Should be dict
+    print(train_data.keys())  # Should include 'inputs' and 'targets'
+
+    val_data = torch.load(config.VAL_INPUT_PATH)
+    print(type(val_data))  # Should be dict
+    print(val_data.keys())  # Should include 'inputs' and 'targets'
+
+
     # Set device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"\nDevice set to: [{device}]\n")
-
-    # Initialize tokenizer
-    tokenizer = ZephyraTokenizer()
-    print("\nTokenizer initialized: [Complete]\n")
-
-    # Update vocabulary size in config
-    config.VOCAB_SIZE = tokenizer.getVocabSize()
-    print(f"\nVocabulary size: [{config.VOCAB_SIZE}]\n")
 
     # Initialize model
     model = ZephyraForQuestionAnswering(config).to(device)
     print("\nModel initialized and moved to device: [Complete]\n")
 
     # Load preprocessed datasets
-    train_dataset = load_preprocessed_data(config.TRAIN_DATA_PATH)
-    val_dataset = load_preprocessed_data(config.VAL_DATA_PATH)
+    train_dataset = CoQADataset(config.TRAIN_INPUT_PATH, config.TRAIN_TARGET_PATH, config.MAX_LEN)
+    val_dataset = CoQADataset(config.VAL_INPUT_PATH, config.VAL_TARGET_PATH, config.MAX_LEN)
     print("\nPreprocessed datasets loaded: [Complete]\n")
 
     # Create data loaders

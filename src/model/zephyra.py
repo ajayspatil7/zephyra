@@ -3,7 +3,6 @@ import torch.nn as nn
 from .embeddings import ZephyraEmbeddings
 from .layers import ZephyraEncoder
 
-
 class ZephyraPreTrainedModel(nn.Module):
     def __init__(self, config):
         super().__init__()
@@ -77,9 +76,6 @@ class ZephyraModel(ZephyraPreTrainedModel):
         output_hidden_states=None,
         return_dict=None,
     ):
-#         print(f"ZephyraModel forward method - input_ids shape: {input_ids.shape}")
-#         print(f"ZephyraModel forward method - attention_mask shape: {attention_mask.shape}")
-
         output_hidden_states = (
             output_hidden_states if output_hidden_states is not None else self.config.OUTPUT_HIDDEN_STATES
         )
@@ -103,12 +99,6 @@ class ZephyraModel(ZephyraPreTrainedModel):
         if token_type_ids is None:
             token_type_ids = torch.zeros(input_shape, dtype=torch.long, device=device)
 
-        extended_attention_mask = attention_mask.unsqueeze(1).unsqueeze(2)
-        extended_attention_mask = extended_attention_mask.to(dtype=torch.float32)
-        extended_attention_mask = (1.0 - extended_attention_mask) * -10000.0
-
-#         print(f"ZephyraModel forward method - extended_attention_mask shape: {extended_attention_mask.shape}")
-
         embedding_output = self.embeddings(
             input_ids=input_ids,
             position_ids=position_ids,
@@ -117,60 +107,77 @@ class ZephyraModel(ZephyraPreTrainedModel):
             past_key_values_length=past_key_values[0][0].shape[2] if past_key_values is not None else 0,
         )
 
-#         print(f"ZephyraModel forward method - embedding_output shape: {embedding_output.shape}")
-
         encoder_outputs = self.encoder(
             embedding_output,
-            attention_mask=extended_attention_mask,
+            attention_mask=attention_mask,
             past_key_values=past_key_values,
             use_cache=use_cache,
             output_hidden_states=output_hidden_states,
         )
 
-#         print(f"ZephyraModel forward method - encoder_outputs type: {type(encoder_outputs)}")
-#         if isinstance(encoder_outputs, dict):
-#             for k, v in encoder_outputs.items():
-#                 if isinstance(v, torch.Tensor):
-#                     print(f"  {k} shape: {v.shape}")
-#                 else:
-#                     print(f"  {k} type: {type(v)}")
-
         return encoder_outputs
-    
-    
-class ZephyraForQuestionAnswering(nn.Module):
-    def __init__(self, config):
-        super().__init__()
-        self.zephyra = ZephyraModel(config)
-        self.qa_outputs = nn.Linear(config.HIDDEN_SIZE, 2)
 
-    def forward(self, input_ids, attention_mask, start_positions=None, end_positions=None):
-        outputs = self.zephyra(input_ids, attention_mask=attention_mask)
-        sequence_output = outputs['last_hidden_state']
+class ZephyraForQuestionAnswering(ZephyraPreTrainedModel):
+    def __init__(self, config):
+        super().__init__(config)
+        self.zephyra = ZephyraModel(config)
+        self.qa_outputs = nn.Linear(config.HIDDEN_SIZE, 2)  # 2 for start_logits and end_logits
+        self.post_init()
+
+    def forward(
+        self,
+        input_ids=None,
+        attention_mask=None,
+        token_type_ids=None,
+        position_ids=None,
+        inputs_embeds=None,
+        start_positions=None,
+        end_positions=None,
+        output_hidden_states=None,
+        return_dict=None,
+    ):
+        outputs = self.zephyra(
+            input_ids,
+            attention_mask=attention_mask,
+            token_type_ids=token_type_ids,
+            position_ids=position_ids,
+            inputs_embeds=inputs_embeds,
+            output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
+        )
+
+        sequence_output = outputs["last_hidden_state"]
 
         logits = self.qa_outputs(sequence_output)
         start_logits, end_logits = logits.split(1, dim=-1)
-        start_logits = start_logits.squeeze(-1)
-        end_logits = end_logits.squeeze(-1)
+        start_logits = start_logits.squeeze(-1).contiguous()
+        end_logits = end_logits.squeeze(-1).contiguous()
 
         total_loss = None
         if start_positions is not None and end_positions is not None:
-            # Flatten logits to match start/end positions
-            start_logits = start_logits.view(-1, start_logits.size(-1))
-            end_logits = end_logits.view(-1, end_logits.size(-1))
-            
-            # Flatten start and end positions
-            start_positions = start_positions.view(-1)
-            end_positions = end_positions.view(-1)
-            
-            # Compute loss
-            loss_fct = nn.CrossEntropyLoss(ignore_index=-1)
+            # If we are on multi-GPU, split add a dimension
+            if len(start_positions.size()) > 1:
+                start_positions = start_positions.squeeze(-1)
+            if len(end_positions.size()) > 1:
+                end_positions = end_positions.squeeze(-1)
+            # sometimes the start/end positions are outside our model inputs, we ignore these terms
+            ignored_index = start_logits.size(1)
+            start_positions = start_positions.clamp(0, ignored_index)
+            end_positions = end_positions.clamp(0, ignored_index)
+
+            loss_fct = nn.CrossEntropyLoss(ignore_index=ignored_index)
             start_loss = loss_fct(start_logits, start_positions)
             end_loss = loss_fct(end_logits, end_positions)
             total_loss = (start_loss + end_loss) / 2
 
+        if not return_dict:
+            output = (start_logits, end_logits) + outputs[2:]
+            return ((total_loss,) + output) if total_loss is not None else output
+
         return {
-            'loss': total_loss,
-            'start_logits': start_logits,
-            'end_logits': end_logits
+            "loss": total_loss,
+            "start_logits": start_logits,
+            "end_logits": end_logits,
+            "hidden_states": outputs.get("hidden_states", None),
+            "attentions": outputs.get("attentions", None),
         }

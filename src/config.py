@@ -2,16 +2,14 @@ import os
 import torch
 
 # Data paths
-TRAIN_DATA_PATH = './data/dataset/tokenized_train_data.pt'
-VAL_DATA_PATH = './data/dataset/tokenized_dev_data.pt'
-TOKENIZER_PATH = './data/dataset/zephyra_tokenizer.pt'
+TRAIN_DATA_PATH = './data/dataset/coqa_train.pt'
+VAL_DATA_PATH = './data/dataset/coqa_val.pt'
 
 # Model parameters
 VOCAB_SIZE = None  # This will be set dynamically based on the tokenizer
 HIDDEN_SIZE = 768
 NUM_HIDDEN_LAYERS = 12
 NUM_ATTENTION_HEADS = 12
-MAX_SEQ_LENGTH = 512
 INTERMEDIATE_SIZE = 3072
 MAX_POSITION_EMBEDDINGS = 512
 HIDDEN_ACT = "gelu"
@@ -20,17 +18,17 @@ ATTENTION_PROBS_DROPOUT_PROB = 0.1
 LAYER_NORM_EPS = 1e-12
 
 # Training parameters
-BATCH_SIZE = 32
+BATCH_SIZE = 8
 LEARNING_RATE = 5e-5
 WEIGHT_DECAY = 0.01
-NUM_EPOCHS = 15
+NUM_EPOCHS = 10
 GRADIENT_ACCUMULATION_STEPS = 1
 MAX_GRAD_NORM = 1.0
 WARMUP_STEPS = 0
 
 # Optimizer parameters
 ADAM_EPSILON = 1e-8
-MIN_LEARNING_RATE = 1e-6
+MIN_LEARNING_RATE = 1e-8
 
 # Early stopping
 PATIENCE = 3

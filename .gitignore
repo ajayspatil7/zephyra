@@ -17,3 +17,5 @@ data/dataset/coqa_train.pt
 data/dataset/tokenized_train_data.pt
 data/dataset/tokenized_dev_data.pt
 data/dataset/zephyra_tokenizer.pt
+data/
+data/preprocessing/

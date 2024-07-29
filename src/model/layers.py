@@ -20,7 +20,6 @@ class ZephyraFeedForward(nn.Module):
         return hidden_states
 
 class ZephyraLayer(nn.Module):
-
     def __init__(self, config):
         super().__init__()
         self.attention = MultiQueryAttention(config)
@@ -33,7 +32,9 @@ class ZephyraLayer(nn.Module):
         self.use_gradient_checkpointing = config.USE_GRADIENT_CHECKPOINTING if hasattr(config, 'USE_GRADIENT_CHECKPOINTING') else False
 
     def forward(self, hidden_states, attention_mask=None, past_key_value=None, use_cache=False):
+#         print(f"ZephyraLayer input hidden_states shape: {hidden_states.shape}")
         attention_output, present_key_value = self.attention(hidden_states, attention_mask, past_key_value)
+#         print(f"ZephyraLayer attention_output shape: {attention_output.shape}")
         attention_output = self.attention_output(attention_output)
         attention_output = self.attention_dropout(attention_output)
         attention_output = self.attention_norm(hidden_states + attention_output)

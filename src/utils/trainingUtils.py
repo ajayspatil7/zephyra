@@ -4,84 +4,66 @@ from tqdm import tqdm
 from torch.cuda.amp import GradScaler, autocast
 from src import config
 import os
+import json
+import torch
+from torch.utils.data import TensorDataset
+from torch.nn.utils.rnn import pad_sequence
+from torch.utils.data import Dataset
 
 def train(model, dataloader, optimizer, device, epoch, writer):
     model.train()
     total_loss = 0
-    scaler = GradScaler()
-    
-    progress_bar = tqdm(dataloader, desc=f"Training Epoch {epoch}")
-    for batch in progress_bar:
-        input_ids = batch['input_ids'].to(device)
-        attention_mask = batch['attention_mask'].to(device)
-        start_positions = batch['start_positions'].to(device)
-        end_positions = batch['end_positions'].to(device)
-
-        optimizer.zero_grad()
-
-        with autocast(enabled=config.USE_MIXED_PRECISION):
-            outputs = model(
-                input_ids=input_ids,
-                attention_mask=attention_mask,
-                start_positions=start_positions,
-                end_positions=end_positions
-            )
+    for batch_idx, batch in enumerate(tqdm(dataloader, desc=f"Training Epoch {epoch}")):
+        try:
+            # Move batch to device
+            batch = {k: v.to(device) for k, v in batch.items()}
+            
+            optimizer.zero_grad()
+            
+            # Forward pass
+            outputs = model(**batch)
+            
             loss = outputs['loss']
+            if loss is not None:
+                loss.backward()
+                optimizer.step()
+                total_loss += loss.item()
 
-        scaler.scale(loss).backward()
-        scaler.step(optimizer)
-        scaler.update()
+            if batch_idx % 100 == 0:
+                print(f"Batch {batch_idx}, Loss: {loss.item() if loss is not None else 'N/A':.4f}")
 
-        total_loss += loss.item()
-        progress_bar.set_postfix({'loss': loss.item()})
+        except Exception as e:
+            print(f"Error processing batch {batch_idx}: {str(e)}")
+            print("Batch content:")
+            for key, value in batch.items():
+                print(f"  {key}: {type(value)}, Shape: {value.shape}")
+            print("Model output shapes:")
+            for key, value in outputs.items():
+                if isinstance(value, torch.Tensor):
+                    print(f"  {key}: Shape: {value.shape}")
+            raise
 
     avg_loss = total_loss / len(dataloader)
-    writer.add_scalar('Train/Loss', avg_loss, epoch)
+    writer.add_scalar('Training/Loss', avg_loss, epoch)
     return avg_loss
+
 
 def evaluate(model, dataloader, device, epoch, writer):
     model.eval()
     total_loss = 0
-    all_start_preds = []
-    all_end_preds = []
-    all_start_labels = []
-    all_end_labels = []
-
     with torch.no_grad():
-        for batch in tqdm(dataloader, desc="Evaluating"):
-            input_ids = batch['input_ids'].to(device)
-            attention_mask = batch['attention_mask'].to(device)
-            start_positions = batch['start_positions'].to(device)
-            end_positions = batch['end_positions'].to(device)
-
-            outputs = model(
-                input_ids=input_ids,
-                attention_mask=attention_mask,
-                start_positions=start_positions,
-                end_positions=end_positions
-            )
-
-            loss = outputs['loss']
-            start_logits = outputs['start_logits']
-            end_logits = outputs['end_logits']
-
+        for batch in tqdm(dataloader, desc=f"Evaluating Epoch {epoch}"):
+            input_ids, attention_mask, start_positions, end_positions = [b.to(device) for b in batch]
+            
+            outputs = model(input_ids, attention_mask=attention_mask, start_positions=start_positions, end_positions=end_positions)
+            
+            loss = outputs.loss
             total_loss += loss.item()
-
-            all_start_preds.extend(torch.argmax(start_logits, dim=1).tolist())
-            all_end_preds.extend(torch.argmax(end_logits, dim=1).tolist())
-            all_start_labels.extend(start_positions.tolist())
-            all_end_labels.extend(end_positions.tolist())
 
     avg_loss = total_loss / len(dataloader)
     writer.add_scalar('Validation/Loss', avg_loss, epoch)
+    return avg_loss
 
-    exact_match = calculate_exact_match(all_start_preds, all_end_preds, all_start_labels, all_end_labels)
-    f1_score = calculate_f1_score(all_start_preds, all_end_preds, all_start_labels, all_end_labels)
-
-    writer.add_scalar('Validation/ExactMatch', exact_match, epoch)
-    writer.add_scalar('Validation/F1Score', f1_score, epoch)
-
-    return avg_loss, exact_match, f1_score
 
 def calculate_exact_match(start_preds, end_preds, start_labels, end_labels):
     correct = sum((s_pred == s_label) and (e_pred == e_label) 
@@ -136,3 +118,62 @@ def save_best_model(model, filename):
 
 def decode_predictions(tokenizer, context, start_pred, end_pred):
     return tokenizer.decode(context[start_pred:end_pred+1])
+
+
+def collateData(batch):
+    input_ids = [item['input_ids'] for item in batch]
+    attention_masks = [item['attention_mask'] for item in batch]
+    start_positions = torch.tensor([item['start_positions'] for item in batch])
+    end_positions = torch.tensor([item['end_positions'] for item in batch])
+
+    # Pad sequences to the maximum length in this batch
+    input_ids = pad_sequence(input_ids, batch_first=True, padding_value=0)
+    attention_masks = pad_sequence(attention_masks, batch_first=True, padding_value=0)
+
+    return {
+        'input_ids': input_ids,
+        'attention_mask': attention_masks,
+        'start_positions': start_positions,
+        'end_positions': end_positions
+    }
+
+
+class CoQADataset(Dataset):
+    def __init__(self, data, max_length=512):
+        self.data = data
+        self.max_length = max_length
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        item = self.data[idx]
+        
+        # Combine question and context
+        input_ids = item['question'] + item['context']
+        
+        # Truncate if necessary
+        if len(input_ids) > self.max_length:
+            input_ids = input_ids[:self.max_length]
+        
+        # Pad if necessary
+        attention_mask = [1] * len(input_ids)
+        padding_length = self.max_length - len(input_ids)
+        input_ids += [0] * padding_length  # Assuming 0 is the padding token ID
+        attention_mask += [0] * padding_length
+
+        # Adjust answer positions
+        start_position = min(item['rationale_start'] + len(item['question']), self.max_length - 1)
+        end_position = min(item['rationale_end'] + len(item['question']), self.max_length - 1)
+
+        return {
+            'input_ids': torch.tensor(input_ids, dtype=torch.long),
+            'attention_mask': torch.tensor(attention_mask, dtype=torch.long),
+            'start_positions': torch.tensor(start_position, dtype=torch.long),
+            'end_positions': torch.tensor(end_position, dtype=torch.long)
+        }
+
+def load_preprocessed_data(file_path):
+    print(f"Loading data from {file_path}")
+    data = torch.load(file_path)
+    return CoQADataset(data)

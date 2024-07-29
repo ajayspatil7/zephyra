@@ -1,5 +1,5 @@
-torch==1.9.0
-numpy==1.21.0
+torch
+numpy
 tiktoken==0.7.0
 tqdm==4.62.0
 tensorboardx==2.6.2.2

@@ -81,7 +81,11 @@ class MultiQueryAttention(nn.Module):
         attn_weights = self.attention_dropout(attn_weights)
 
         attn_output = torch.matmul(attn_weights, v)
-        attn_output = attn_output.transpose(1, 2).contiguous().view(bsz, q_len, self.hidden_size)
+#         print(f"attn_output shape before transpose: {attn_output.shape}")
+        attn_output = attn_output.transpose(1, 2).contiguous()
+#         print(f"attn_output shape after transpose: {attn_output.shape}")
+        attn_output = attn_output.view(bsz, q_len, self.hidden_size)
+#         print(f"attn_output shape after view: {attn_output.shape}")
         attn_output = self.o_proj(attn_output)
 
         return attn_output, (k, v)

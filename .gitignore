@@ -19,3 +19,6 @@ data/dataset/tokenized_dev_data.pt
 data/dataset/zephyra_tokenizer.pt
 data/
 data/preprocessing/
+data/dataset/
+src/tokeniser/zephyra_tokenizer.json
+

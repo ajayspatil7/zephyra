@@ -9,7 +9,7 @@ from torch.optim import AdamW
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from tensorboardX import SummaryWriter
 from src.model.zephyra import ZephyraForQuestionAnswering
-from src.tokenizers.tokenizer import ZephyraTokenizer
+from src.tokeniser.zephyratokeniser import ZephyraTokenizer
 from src.utils.trainingUtils import train, evaluate, save_checkpoint, load_checkpoint, save_best_model
 import src.config as config
 

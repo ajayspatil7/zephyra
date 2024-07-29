@@ -8,7 +8,7 @@ import torch
 
 from src.config import ZephyraConfig, config as config_dict
 from src.model.zephyra import ZephyraForQuestionAnswering
-from src.tokenizers import ZephyraTokenizer
+from src.tokeniser import ZephyraTokenizer
 
 def inspect_model():
     print("Initializing Zephyra model for inspection...")

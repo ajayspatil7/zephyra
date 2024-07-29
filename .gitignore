@@ -14,3 +14,6 @@ project/tests
 data/raw/coqa-dev-v1.0.json
 data/dataset/coqa_val.pt
 data/dataset/coqa_train.pt
+data/dataset/tokenized_train_data.pt
+data/dataset/tokenized_dev_data.pt
+data/dataset/zephyra_tokenizer.pt

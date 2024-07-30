@@ -1,54 +1,47 @@
-import sys
-import os
 import torch
+import os
+import sys
+import warnings
 
+warnings.filterwarnings("ignore")
 # Add the project root to the Python path
-# project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-# sys.path.insert(0, project_root)
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, project_root)
 
-from src.config import ZephyraConfig, config as config_dict
+from src.config import config
 from src.model.zephyra import ZephyraForQuestionAnswering
-from src.tokeniser import ZephyraTokenizer
 
-def inspect_model():
-    print("Initializing Zephyra model for inspection...")
+def inspect_model(model, file):
+    file.write("Model Architecture:\n")
+    file.write(str(model) + "\n")
     
-    # Create the config object
-    config = ZephyraConfig(**config_dict.__dict__)
-    
-    # Initialize tokenizer
-    tokenizer = ZephyraTokenizer()
-    
-    # Update vocabulary size in config
-    config.VOCAB_SIZE = tokenizer.getVocabSize()
-    
-    # Print some config values
-    print(f"\nConfig values:")
-    print(f"VOCAB_SIZE: {config.VOCAB_SIZE}")
-    print(f"HIDDEN_SIZE: {config.HIDDEN_SIZE}")
-    print(f"NUM_HIDDEN_LAYERS: {config.NUM_HIDDEN_LAYERS}")
-    print(f"NUM_ATTENTION_HEADS: {config.NUM_ATTENTION_HEADS}")
-    
-    # Initialize model
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = ZephyraForQuestionAnswering(config).to(device)
-    
-    # Print model structure
-    print("\nModel structure:")
-    print(model)
-    
-    # Print number of parameters
     total_params = sum(p.numel() for p in model.parameters())
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print(f"\nTotal parameters: {total_params}")
-    print(f"Trainable parameters: {trainable_params}")
+    file.write("\nModel Parameters:\n")
+    file.write(f"Total parameters: {total_params}\n")
+    file.write(f"Trainable parameters: {trainable_params}\n")
     
-    # Test forward pass
-    print("\nTesting forward pass...")
-    input_ids = torch.randint(0, config.VOCAB_SIZE, (1, 512)).to(device)
+    file.write("\nDetailed Parameter Information:\n")
+    for name, param in model.named_parameters():
+        if param.requires_grad:
+            file.write(f"{name}:\n")
+            file.write(f"  Shape: {param.shape}\n")
+            file.write(f"  Data type: {param.dtype}\n")
+            file.write(f"  Device: {param.device}\n")
+            file.write(f"  Requires grad: {param.requires_grad}\n")
+
+def test_forward_pass(model, file):
+    file.write("\nTesting Forward Pass:\n")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+    
+    # Create dummy inputs
+    batch_size = 2
+    seq_length = 128
+    input_ids = torch.randint(0, config.VOCAB_SIZE, (batch_size, seq_length)).to(device)
     attention_mask = torch.ones_like(input_ids).to(device)
-    start_positions = torch.tensor([0]).to(device)
-    end_positions = torch.tensor([5]).to(device)
+    start_positions = torch.randint(0, seq_length, (batch_size,)).to(device)
+    end_positions = torch.randint(0, seq_length, (batch_size,)).to(device)
     
     try:
         outputs = model(
@@ -57,15 +50,20 @@ def inspect_model():
             start_positions=start_positions,
             end_positions=end_positions
         )
-        print("Forward pass successful!")
-        print(f"Output keys: {outputs.keys()}")
-        print(f"Loss: {outputs['loss'].item()}")
-        print(f"Start logits shape: {outputs['start_logits'].shape}")
-        print(f"End logits shape: {outputs['end_logits'].shape}")
+        file.write("Forward pass successful!\n")
+        file.write("Output keys: " + str(outputs.keys()) + "\n")
+        for key, value in outputs.items():
+            if isinstance(value, torch.Tensor):
+                file.write(f"{key} shape: {value.shape}\n")
+            else:
+                file.write(f"{key}: {value}\n")
     except Exception as e:
-        print(f"Error during forward pass: {str(e)}")
-    
-    print("\nModel inspection complete.")
+        file.write(f"Error during forward pass: {str(e)}\n")
 
 if __name__ == "__main__":
-    inspect_model()
+    model = ZephyraForQuestionAnswering(config)
+    with open("model_inspection.txt", "w") as file:
+        inspect_model(model, file)
+        test_forward_pass(model, file)
+
+    print("Model inspection and forward pass test completed. Results are written to 'model_inspection.txt'.")

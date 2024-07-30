@@ -44,9 +44,6 @@ class ZephyraPreTrainedModel(nn.Module):
             output_embeddings.out_features = input_embeddings.num_embeddings
 
     def post_init(self):
-        """
-        Initialize weights and apply final processing if needed.
-        """
         self.apply(self._init_weights)
         self.tie_weights()
 
@@ -76,9 +73,7 @@ class ZephyraModel(ZephyraPreTrainedModel):
         output_hidden_states=None,
         return_dict=None,
     ):
-        output_hidden_states = (
-            output_hidden_states if output_hidden_states is not None else self.config.OUTPUT_HIDDEN_STATES
-        )
+        output_hidden_states = output_hidden_states if output_hidden_states is not None else self.config.OUTPUT_HIDDEN_STATES
         use_cache = use_cache if use_cache is not None else self.config.USE_CACHE
         return_dict = return_dict if return_dict is not None else self.config.USE_RETURN_DICT
 
@@ -92,19 +87,17 @@ class ZephyraModel(ZephyraPreTrainedModel):
             raise ValueError("You have to specify either input_ids or inputs_embeds")
 
         batch_size, seq_length = input_shape
-        device = input_ids.device if input_ids is not None else inputs_embeds.device
 
         if attention_mask is None:
-            attention_mask = torch.ones(input_shape, device=device)
+            attention_mask = torch.ones(input_shape, device=input_ids.device)
         if token_type_ids is None:
-            token_type_ids = torch.zeros(input_shape, dtype=torch.long, device=device)
+            token_type_ids = torch.zeros(input_shape, dtype=torch.long, device=input_ids.device)
 
         embedding_output = self.embeddings(
             input_ids=input_ids,
             position_ids=position_ids,
             token_type_ids=token_type_ids,
             inputs_embeds=inputs_embeds,
-            past_key_values_length=past_key_values[0][0].shape[2] if past_key_values is not None else 0,
         )
 
         encoder_outputs = self.encoder(
@@ -116,12 +109,12 @@ class ZephyraModel(ZephyraPreTrainedModel):
         )
 
         return encoder_outputs
-
+    
 class ZephyraForQuestionAnswering(ZephyraPreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
         self.zephyra = ZephyraModel(config)
-        self.qa_outputs = nn.Linear(config.HIDDEN_SIZE, 2)  # 2 for start_logits and end_logits
+        self.qa_outputs = nn.Linear(config.HIDDEN_SIZE, 2)
         self.post_init()
 
     def forward(
@@ -136,6 +129,8 @@ class ZephyraForQuestionAnswering(ZephyraPreTrainedModel):
         output_hidden_states=None,
         return_dict=None,
     ):
+        return_dict = return_dict if return_dict is not None else self.config.USE_RETURN_DICT
+
         outputs = self.zephyra(
             input_ids,
             attention_mask=attention_mask,
@@ -171,7 +166,7 @@ class ZephyraForQuestionAnswering(ZephyraPreTrainedModel):
             total_loss = (start_loss + end_loss) / 2
 
         if not return_dict:
-            output = (start_logits, end_logits) + outputs[2:]
+            output = (start_logits, end_logits) + (outputs["hidden_states"],) if output_hidden_states else (start_logits, end_logits)
             return ((total_loss,) + output) if total_loss is not None else output
 
         return {

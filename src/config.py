@@ -1,108 +1,75 @@
-import os
-import torch
+class Config:
+    # Data paths
+    TRAIN_PATH = "./data/datasets/train.pt"
+    VAL_PATH = "./data/datasets/dev.pt"
 
-# Data paths
-TRAIN_INPUT_PATH = './data/datasets/train_inputs.pt'
-TRAIN_TARGET_PATH = './data/datasets/train_targets.pt'
-VAL_INPUT_PATH = './data/datasets/dev_inputs.pt'
-VAL_TARGET_PATH = './data/datasets/dev_targets.pt'
+    # Model parameters
+    VOCAB_SIZE = 24710
+    HIDDEN_SIZE = 1024
+    NUM_HIDDEN_LAYERS = 16
+    NUM_ATTENTION_HEADS = 16
+    INTERMEDIATE_SIZE = 4096
+    MAX_POSITION_EMBEDDINGS = 512
+    MAX_LEN = 512
+    HIDDEN_ACT = "gelu"
+    HIDDEN_DROPOUT_PROB = 0.1
+    ATTENTION_PROBS_DROPOUT_PROB = 0.1
+    LAYER_NORM_EPS = 1e-12
 
-TRAIN_PATH = "./data/datasets/train.pt"
-VAL_PATH = "./data/datasets/dev.pt"
+    # Special token IDs
+    PAD_TOKEN_ID = 0
+    BOS_TOKEN_ID = 1
+    EOS_TOKEN_ID = 2
+    UNK_TOKEN_ID = 3
 
-# Model parameters
-VOCAB_SIZE = 24710  # This will be set dynamically based on the tokenizer
-HIDDEN_SIZE = 768
-NUM_HIDDEN_LAYERS = 12
-NUM_ATTENTION_HEADS = 12
-INTERMEDIATE_SIZE = 3072
-MAX_POSITION_EMBEDDINGS = 512
-MAX_LEN = 512
-HIDDEN_ACT = "gelu"
-HIDDEN_DROPOUT_PROB = 0.1
-ATTENTION_PROBS_DROPOUT_PROB = 0.1
-LAYER_NORM_EPS = 1e-12
+    # Training parameters
+    BATCH_SIZE = 16
+    LEARNING_RATE = 5e-5
+    WEIGHT_DECAY = 0.01
+    NUM_EPOCHS = 10
+    GRADIENT_ACCUMULATION_STEPS = 1
+    MAX_GRAD_NORM = 1.0
+    WARMUP_STEPS = 0
 
-# Training parameters
-BATCH_SIZE = 8
-LEARNING_RATE = 5e-5
-WEIGHT_DECAY = 0.01
-NUM_EPOCHS = 10
-GRADIENT_ACCUMULATION_STEPS = 1
-MAX_GRAD_NORM = 1.0
-WARMUP_STEPS = 0
+    # Optimizer parameters
+    ADAM_EPSILON = 1e-8
+    MIN_LEARNING_RATE = 1e-8
 
-# Optimizer parameters
-ADAM_EPSILON = 1e-8
-MIN_LEARNING_RATE = 1e-8
+    # Early stopping
+    PATIENCE = 3
+    MIN_DELTA = 0.001
 
-# Early stopping
-PATIENCE = 3
-MIN_DELTA = 0.001
+    # Mixed precision training
+    USE_MIXED_PRECISION = True
 
-# Mixed precision training
-USE_MIXED_PRECISION = True
+    # Logging and saving
+    LOG_DIR = './logs'
+    CHECKPOINT_DIR = './checkpoints'
+    LOGGING_STEPS = 100
+    SAVE_STEPS = 1000
 
-# Logging and saving
-LOG_DIR = './logs'
-CHECKPOINT_DIR = './checkpoints'
-LOGGING_STEPS = 100
-SAVE_STEPS = 1000
+    # Device
+    DEVICE = 'cuda'  # or 'cpu' depending on availability
 
-# Ensure directories exist
-os.makedirs(LOG_DIR, exist_ok=True)
-os.makedirs(CHECKPOINT_DIR, exist_ok=True)
+    # Tokenizer
+    TOKENIZER_MODEL = "cl100k_base"
 
-# Device
-DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
+    # Evaluation
+    EVAL_BATCH_SIZE = 16
 
-# Tokenizer
-TOKENIZER_MODEL = "cl100k_base"
+    # Data processing
+    MAX_QUERY_LENGTH = 64
+    DOC_STRIDE = 128
+    MAX_ANSWER_LENGTH = 30
 
-# Evaluation
-EVAL_BATCH_SIZE = 16
+    # Random seed for reproducibility
+    SEED = 42
 
-# Data processing
-MAX_QUERY_LENGTH = 64
-DOC_STRIDE = 128
-MAX_ANSWER_LENGTH = 30
+    # Additional model parameters
+    TYPE_VOCAB_SIZE = 2
+    INITIALIZER_RANGE = 0.02
+    USE_CACHE = True
+    OUTPUT_HIDDEN_STATES = False
+    USE_RETURN_DICT = True
 
-# Random seed for reproducibility
-SEED = 42
-
-# TensorBoard
-TENSORBOARD_UPDATE_FREQ = 100
-
-# Learning rate scheduler
-LR_SCHEDULER_FACTOR = 0.1
-LR_SCHEDULER_PATIENCE = 2
-
-# Checkpoint settings
-SAVE_TOTAL_LIMIT = 5
-
-# Model version
-MODEL_VERSION = "v1.0.0"
-
-# Debugging
-DEBUG = False
-
-# Distributed training
-WORLD_SIZE = 1
-DISTRIBUTED = False
-
-# Additional parameters
-TYPE_VOCAB_SIZE = 2
-PAD_TOKEN_ID = 0
-INITIALIZER_RANGE = 0.02
-USE_CACHE = True
-OUTPUT_HIDDEN_STATES = False
-USE_RETURN_DICT = True
-
-# Create a configuration class
-class ZephyraConfig:
-    def __init__(self, **kwargs):
-        for key, value in kwargs.items():
-            setattr(self, key, value)
-
-# Create the config object
-config = ZephyraConfig(**{k: v for k, v in globals().items() if not k.startswith('__') and k.isupper()})
+config = Config()

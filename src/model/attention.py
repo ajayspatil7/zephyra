@@ -35,6 +35,11 @@ def apply_rotary_pos_emb(q, k, cos, sin):
     k_embed = (k * cos) + (rotate_half(k) * sin)
     return q_embed, k_embed
 
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import math
+
 class MultiQueryAttention(nn.Module):
     def __init__(self, config):
         super().__init__()
@@ -47,41 +52,36 @@ class MultiQueryAttention(nn.Module):
         self.v_proj = nn.Linear(self.hidden_size, self.head_dim, bias=False)
         self.o_proj = nn.Linear(self.hidden_size, self.hidden_size, bias=False)
 
-        self.rotary_emb = RotaryEmbedding(self.head_dim, config.MAX_POSITION_EMBEDDINGS)
-        self.attention_dropout = nn.Dropout(config.ATTENTION_PROBS_DROPOUT_PROB)
-
-        self._reset_parameters()
-
-    def _reset_parameters(self):
-        nn.init.xavier_uniform_(self.q_proj.weight)
-        nn.init.xavier_uniform_(self.k_proj.weight)
-        nn.init.xavier_uniform_(self.v_proj.weight)
-        nn.init.xavier_uniform_(self.o_proj.weight)
+        self.dropout = nn.Dropout(config.ATTENTION_PROBS_DROPOUT_PROB)
 
     def forward(self, hidden_states, attention_mask=None, past_key_value=None):
-        bsz, q_len, _ = hidden_states.size()
+        bsz, tgt_len, _ = hidden_states.size()
 
-        q = self.q_proj(hidden_states).view(bsz, q_len, self.num_heads, self.head_dim).transpose(1, 2)
-        k = self.k_proj(hidden_states).view(bsz, q_len, 1, self.head_dim).transpose(1, 2)
-        v = self.v_proj(hidden_states).view(bsz, q_len, 1, self.head_dim).transpose(1, 2)
+        query_states = self.q_proj(hidden_states).view(bsz, tgt_len, self.num_heads, self.head_dim).transpose(1, 2)
+        key_states = self.k_proj(hidden_states).view(bsz, tgt_len, 1, self.head_dim).transpose(1, 2)
+        value_states = self.v_proj(hidden_states).view(bsz, tgt_len, 1, self.head_dim).transpose(1, 2)
+
+        key_states = key_states.expand(-1, self.num_heads, -1, -1)
+        value_states = value_states.expand(-1, self.num_heads, -1, -1)
 
         if past_key_value is not None:
-            k = torch.cat([past_key_value[0], k], dim=2)
-            v = torch.cat([past_key_value[1], v], dim=2)
+            key_states = torch.cat([past_key_value[0], key_states], dim=2)
+            value_states = torch.cat([past_key_value[1], value_states], dim=2)
 
-        cos, sin = self.rotary_emb(v, seq_len=k.shape[2])
-        q, k = apply_rotary_pos_emb(q, k, cos, sin)
+        src_len = key_states.size(2)
 
-        attn_weights = torch.matmul(q, k.transpose(-1, -2)) / math.sqrt(self.head_dim)
+        attn_weights = torch.matmul(query_states, key_states.transpose(2, 3)) / math.sqrt(self.head_dim)
 
         if attention_mask is not None:
+            attention_mask = attention_mask.unsqueeze(1).unsqueeze(2)
+            attention_mask = (1.0 - attention_mask) * torch.finfo(attn_weights.dtype).min
             attn_weights = attn_weights + attention_mask
 
         attn_weights = F.softmax(attn_weights, dim=-1)
-        attn_weights = self.attention_dropout(attn_weights)
+        attn_weights = self.dropout(attn_weights)
 
-        attn_output = torch.matmul(attn_weights, v)
-        attn_output = attn_output.transpose(1, 2).contiguous().view(bsz, q_len, self.hidden_size)
+        attn_output = torch.matmul(attn_weights, value_states)
+        attn_output = attn_output.transpose(1, 2).contiguous().view(bsz, tgt_len, self.hidden_size)
         attn_output = self.o_proj(attn_output)
 
-        return attn_output, (k, v)
+        return attn_output, (key_states, value_states)

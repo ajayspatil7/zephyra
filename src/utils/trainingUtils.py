@@ -5,100 +5,164 @@ from torch.cuda.amp import GradScaler, autocast
 from src import config
 import os
 from torch.utils.data import DataLoader, TensorDataset, Dataset
-
+from torch.nn.utils.rnn import pad_sequence
+import wandb
 
 class CoQADataset(Dataset):
-    def __init__(self, inputs_path, targets_path, max_len):
-        self.inputs = torch.load(inputs_path)
-        self.targets = torch.load(targets_path)
+    def __init__(self, data_path, max_len, vocab_size):
+        data = torch.load(data_path)
+        self.inputs = data['inputs']
+        self.targets = data['targets']
         self.max_len = max_len
+        self.vocab_size = vocab_size
 
-        # Ensure inputs and targets are dictionaries
-        if not isinstance(self.inputs, dict):
-            raise TypeError("Loaded inputs data is not a dictionary.")
-        if not isinstance(self.targets, dict):
-            raise TypeError("Loaded targets data is not a dictionary.")
+        if not isinstance(self.inputs, list) or not isinstance(self.targets, list):
+            raise TypeError("Inputs and targets should be lists.")
+        
+        if len(self.inputs) != len(self.targets):
+            raise ValueError("Mismatch in length between inputs and targets.")
 
-        # Ensure 'inputs' and 'targets' keys are present
-        if 'inputs' not in self.inputs or 'targets' not in self.targets:
-            raise KeyError("'inputs' or 'targets' key missing in the data.")
+        print(f"Dataset loaded. Number of samples: {len(self.inputs)}")
+        print(f"Sample input length: {len(self.inputs[0])}")
+        print(f"Sample target: {self.targets[0]}")
 
     def __len__(self):
-        # Ensure data is indexed correctly
-        return len(self.inputs['inputs'])
+        return len(self.inputs)
 
     def __getitem__(self, idx):
+        input_item = self.inputs[idx][:self.max_len]
+        target_item = self.targets[idx]
+        
+        # Convert to torch tensors
+        input_item = torch.tensor(input_item, dtype=torch.long)
+        
+        # Ensure target_item has at least two elements (start and end position)
+        if len(target_item) < 2:
+            target_item = target_item + [0] * (2 - len(target_item))
+        target_item = torch.tensor(target_item[:2], dtype=torch.long)
+
+        # Clamp input values to be within vocab size
+        input_item = torch.clamp(input_item, 0, self.vocab_size - 1)
+
+        # Create attention mask
+        attention_mask = torch.ones_like(input_item)
+
         return {
-            'input': self.inputs['inputs'][idx],
-            'target': self.targets['targets'][idx]
+            'input_ids': input_item,
+            'attention_mask': attention_mask,
+            'target_ids': target_item
         }
 
+    
+def pad_collate(batch):
+    inputs = [item['input_ids'] for item in batch]
+    attention_masks = [item['attention_mask'] for item in batch]
+    targets = [item['target_ids'] for item in batch]
 
-def train(model, dataloader, optimizer, device, epoch, writer):
+    padded_inputs = pad_sequence(inputs, batch_first=True, padding_value=0)
+    padded_attention_masks = pad_sequence(attention_masks, batch_first=True, padding_value=0)
+    padded_targets = torch.stack(targets)  # Changed from pad_sequence to stack
+
+    return {
+        'input_ids': padded_inputs,
+        'attention_mask': padded_attention_masks,
+        'target_ids': padded_targets
+    }
+
+def trainEpoch(model, dataloader, optimizer, device, epoch, config):
     model.train()
     total_loss = 0
-    for batch in dataloader:
-        input_ids = batch['input_ids'].to(device)
-        attention_mask = batch['attention_mask'].to(device)
-        start_positions = batch['start_positions'].to(device)
-        end_positions = batch['end_positions'].to(device)
+    scaler = GradScaler()
 
-        optimizer.zero_grad()
-        outputs = model(input_ids=input_ids, attention_mask=attention_mask, start_positions=start_positions, end_positions=end_positions)
-        loss = outputs.loss
-        loss.backward()
-        optimizer.step()
+    for batch_idx, batch in enumerate(tqdm(dataloader, desc=f"Training Epoch {epoch}")):
+        batch = {k: v.to(device) for k, v in batch.items()}
+        
+#         print(f"Batch {batch_idx}:")
+#         print(f"input_ids shape: {batch['input_ids'].shape}")
+#         print(f"attention_mask shape: {batch['attention_mask'].shape}")
+#         print(f"target_ids shape: {batch['target_ids'].shape}")
 
-        total_loss += loss.item()
+        try:
+            with autocast():
+                outputs = model(
+                    input_ids=batch['input_ids'],
+                    attention_mask=batch['attention_mask'],
+                    start_positions=batch['target_ids'][:, 0],
+                    end_positions=batch['target_ids'][:, 1],
+                    return_dict=True
+                )
+                loss = outputs['loss']
 
-    avg_loss = total_loss / len(dataloader)
-    writer.add_scalar('Training Loss', avg_loss, epoch)
-    return avg_loss
-
-
-def evaluate(model, dataloader, device, epoch, writer):
-    model.eval()
-    total_loss = 0
-    all_start_preds = []
-    all_end_preds = []
-    all_start_labels = []
-    all_end_labels = []
-
-    with torch.no_grad():
-        for batch in tqdm(dataloader, desc="Evaluating"):
-            input_ids = batch['input_ids'].to(device)
-            attention_mask = batch['attention_mask'].to(device)
-            start_positions = batch['start_positions'].to(device)
-            end_positions = batch['end_positions'].to(device)
-
-            outputs = model(
-                input_ids=input_ids,
-                attention_mask=attention_mask,
-                start_positions=start_positions,
-                end_positions=end_positions
-            )
-
-            loss = outputs['loss']
-            start_logits = outputs['start_logits']
-            end_logits = outputs['end_logits']
+            scaler.scale(loss).backward()
+            scaler.unscale_(optimizer)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), config.MAX_GRAD_NORM)
+            scaler.step(optimizer)
+            scaler.update()
+            optimizer.zero_grad()
 
             total_loss += loss.item()
 
-            all_start_preds.extend(torch.argmax(start_logits, dim=1).tolist())
-            all_end_preds.extend(torch.argmax(end_logits, dim=1).tolist())
-            all_start_labels.extend(start_positions.tolist())
-            all_end_labels.extend(end_positions.tolist())
+            if batch_idx % config.LOGGING_STEPS == 0:
+                wandb.log({
+                    "train/loss": loss.item(),
+                    "train/learning_rate": optimizer.param_groups[0]['lr'],
+                    "train/epoch": epoch,
+                    "train/step": epoch * len(dataloader) + batch_idx
+                })
+
+            print(f"Loss: {loss.item()}")
+
+        except RuntimeError as e:
+            print(f"Error in batch {batch_idx}: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            continue
 
     avg_loss = total_loss / len(dataloader)
-    writer.add_scalar('Validation/Loss', avg_loss, epoch)
+    wandb.log({"train/epoch_loss": avg_loss, "train/epoch": epoch})
+    return avg_loss
 
+# Update other functions similarly to accept config as a parameter
+
+def evaluate(model, dataloader, device, epoch, config):
+    model.eval()
+    total_loss = 0
+    all_start_preds, all_end_preds = [], []
+    all_start_labels, all_end_labels = [], []
+
+    with torch.no_grad():
+        for batch in tqdm(dataloader, desc=f"Evaluating Epoch {epoch}"):
+            batch = {k: v.to(device) for k, v in batch.items()}
+            
+            outputs = model(
+                input_ids=batch['input_ids'],
+                attention_mask=batch['attention_mask'],
+                start_positions=batch['target_ids'][:, 0],
+                end_positions=batch['target_ids'][:, 1],
+                return_dict=True
+            )
+            
+            loss = outputs['loss']
+            total_loss += loss.item()
+
+            all_start_preds.extend(torch.argmax(outputs['start_logits'], dim=1).tolist())
+            all_end_preds.extend(torch.argmax(outputs['end_logits'], dim=1).tolist())
+            all_start_labels.extend(batch['target_ids'][:, 0].tolist())
+            all_end_labels.extend(batch['target_ids'][:, 1].tolist())
+
+    avg_loss = total_loss / len(dataloader)
     exact_match = calculate_exact_match(all_start_preds, all_end_preds, all_start_labels, all_end_labels)
     f1_score = calculate_f1_score(all_start_preds, all_end_preds, all_start_labels, all_end_labels)
 
-    writer.add_scalar('Validation/ExactMatch', exact_match, epoch)
-    writer.add_scalar('Validation/F1Score', f1_score, epoch)
+    wandb.log({
+        "val/loss": avg_loss,
+        "val/exact_match": exact_match,
+        "val/f1_score": f1_score,
+        "val/epoch": epoch
+    })
 
     return avg_loss, exact_match, f1_score
+
 
 def calculate_exact_match(start_preds, end_preds, start_labels, end_labels):
     correct = sum((s_pred == s_label) and (e_pred == e_label) 

@@ -1,84 +1,59 @@
 import torch
-import sys
 import os
+import sys
 import warnings
+
+# Add the project root to the Python path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
-warnings.filterwarnings('ignore')
+warnings.filterwarnings("ignore")
 
+from src.config import config
+from src.utils.trainingUtils import CoQADataset
 
-def inspect_data_file(file_path):
-    try:
-        # Load the data from the .pt file
-        data = torch.load(file_path)
-        data_type = type(data)
-
-        # Print some information about the data
-        print(f"\nLoaded data from {file_path}")
-        print(f"Type of data: {data_type}")
-        
-        if isinstance(data, list):
-            data_len = len(data)
-            print(f"Number of entries: {data_len}")
-#             print(f"First entry example: {data[0]}")
-        elif isinstance(data, dict):
-            dict_keys = list(data.keys())
-            
-            key_zero = data[list(data.keys())[0]]
-            key_one = data[list(data.keys())[1]]
-            
-            sample = key_zero[0]
-            sample_type = type(sample)
-            
-            sample2 = key_zero[1]
-            sample2_type = type(sample2)
-            
-            key_zero_len = len(data[list(data.keys())[0]])
-            key_zero_type = type(data[list(data.keys())[0]])
-
-            key_one_len =  len(data[list(data.keys())[1]])
-            key_one_type = type(data[list(data.keys())[1]])
-            
-            print(f"Keys in the data: {dict_keys}")
-            
-            if isinstance(key_zero, list) and isinstance(key_one, list) :
-                print(f"\nType of {dict_keys[0]} is a {key_zero_type} with len {key_zero_len}")
-#                 print(f"Type of {dict_keys[0]} sample 1 {sample_type} with value {sample} and sample 1 len {len(sample)}")
-                print(f"Type of {dict_keys[0]} sample 1 {sample_type} with sample 1 len {len(sample)}")
-                
-                print(f"\nType of {dict_keys[1]} is a {key_one_type} with len {key_one_len}")
-#                 print(f"Type of {dict_keys[1]} sample 1 {sample2_type} with value {sample2} and sample 1 len {len(sample2)}")
-                print(f"Type of {dict_keys[1]} sample 1 {sample2_type} with sample 1 len {len(sample2)}")
-                
-            if isinstance(data[list(data.keys())[1]], dict):
-                print(f"Type of {type(data[list(data.keys())[1]].keys())} with len {list(data[list(data.keys())[0]].keys())}")
-#             print(f"Example entry: {data}")
-        else:
-            print("Unexpected data format.")
-        
-        # Print a few samples for verification
-#         if isinstance(data, list) and len(data) > 0:
-#             print("\nSample entries:")
-#             for i in range(min(1, len(data))):  # Print up to 5 samples
-#                 print(f"Sample {i}: {data[i]}")
-#         elif isinstance(data, dict):
-#             print("\nSample entry:")
-#             for key, value in data.items():
-#                 print(f"Key: {key}, Value: {value}")
-
-    except Exception as e:
-        print(f"An error occurred: {e}")
-
-def main():
-    # Define paths to your .pt files
-    train_data_path = './data/datasets/train.pt'
-    val_data_path = './data/datasets/dev.pt'
+def analyze_dataset(dataset_path, max_len, vocab_size):
+    print(f"Analyzing dataset: {dataset_path}")
+    dataset = CoQADataset(dataset_path, max_len, vocab_size)
     
-    print("Inspecting training data...")
-    inspect_data_file(train_data_path)
+    print(f"Dataset size: {len(dataset)}")
+    print(f"Max sequence length: {max_len}")
+    print(f"Vocabulary size: {vocab_size}")
     
-    print("\nInspecting validation data...")
-    inspect_data_file(val_data_path)
+    # Analyze a few samples
+    for i in range(min(5, len(dataset))):
+        sample = dataset[i]
+        print(f"\nSample {i}:")
+        for key, value in sample.items():
+            print(f"  {key}:")
+            print(f"    Shape: {value.shape}")
+            print(f"    Data type: {value.dtype}")
+            print(f"    Min value: {value.min().item()}")
+            print(f"    Max value: {value.max().item()}")
+            if key == 'input_ids':
+                print(f"    Unique tokens: {len(torch.unique(value))}")
+            if key == 'target_ids':
+                print(f"    Values: {value.tolist()}")
+
+    # Analyze overall statistics
+    all_input_lengths = []
+    all_target_lengths = []
+    for i in range(len(dataset)):
+        sample = dataset[i]
+        all_input_lengths.append(len(sample['input_ids']))
+        all_target_lengths.append(len(sample['target_ids']))
+    
+    print("\nOverall statistics:")
+    print(f"  Input lengths:")
+    print(f"    Min: {min(all_input_lengths)}")
+    print(f"    Max: {max(all_input_lengths)}")
+    print(f"    Average: {sum(all_input_lengths) / len(all_input_lengths):.2f}")
+    print(f"  Target lengths:")
+    print(f"    Min: {min(all_target_lengths)}")
+    print(f"    Max: {max(all_target_lengths)}")
+    print(f"    Average: {sum(all_target_lengths) / len(all_target_lengths):.2f}")
 
 if __name__ == "__main__":
-    main()
+    print("Analyzing training dataset:")
+    analyze_dataset(config.TRAIN_PATH, config.MAX_LEN, config.VOCAB_SIZE)
+    print("\nAnalyzing validation dataset:")
+    analyze_dataset(config.VAL_PATH, config.MAX_LEN, config.VOCAB_SIZE)

@@ -1,9 +1,9 @@
 import sys
 import os
 import warnings
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-sys.path.insert(0, project_root)
-warnings.filterwarnings('ignore')
+# project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+# sys.path.insert(0, project_root)
+# warnings.filterwarnings('ignore')
 
 import warnings
 import torch

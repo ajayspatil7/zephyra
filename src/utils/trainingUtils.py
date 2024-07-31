@@ -210,6 +210,55 @@ def load_checkpoint(model, optimizer, filename):
     else:
         print(f"No checkpoint found at {filename}")
         return 0, None
+    
+def load_model(model_path):
+    model = ZephyraForQuestionAnswering(config)
+    model.load_state_dict(torch.load(model_path, map_location=torch.device(config.DEVICE)))
+    model.to(config.DEVICE)
+    model.eval()
+    return model
+
+def load_vocab(vocab_file):
+    with open(vocab_file, 'r', encoding='utf-8') as f:
+        return [line.strip() for line in f]
+
+def get_answer(model, tokenizer, context, question):
+    inputs = tokenizer.encode_plus(
+        question,
+        context,
+        max_length=config.MAX_LEN,
+        padding='max_length',
+        truncation=True
+    )
+    inputs = {k: v.to(config.DEVICE) for k, v in inputs.items()}
+
+    print(f"Input shape: {inputs['input_ids'].shape}")
+
+    with torch.no_grad():
+        outputs = model(**inputs)
+
+    start_logits = outputs['start_logits'][0]
+    end_logits = outputs['end_logits'][0]
+
+    # Find the tokens with the highest start and end logits
+    start_index = torch.argmax(start_logits)
+    end_index = torch.argmax(end_logits)
+
+    # Ensure end_index is not before start_index
+    if end_index < start_index:
+        end_index = torch.argmax(end_logits[start_index:]) + start_index
+
+    print(f"Start index: {start_index}, End index: {end_index}")
+
+    input_ids = inputs["input_ids"].squeeze().tolist()
+
+    # Extract answer tokens
+    answer_tokens = input_ids[start_index:end_index+1]
+    
+    # Decode tokens
+    answer = tokenizer.decode(answer_tokens)
+
+    return answer.strip()
 
 def save_best_model(model, filename):
     torch.save(model.state_dict(), filename)
@@ -220,7 +269,6 @@ def decode_predictions(tokenizer, context, start_pred, end_pred):
 
 
 def main():
-    
     train = CoQADataset()
 
 

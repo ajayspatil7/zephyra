@@ -42,7 +42,7 @@ class ZephyraCoQADataset(Dataset):
         input_ids = torch.tensor(item['input_ids'], dtype=torch.long)
         labels = torch.tensor(item['target_ids'], dtype=torch.long)
 
-        # Pad or truncate input_ids and labels
+
         input_ids = self._pad_or_truncate(input_ids)
         labels = self._pad_or_truncate(labels)
 
@@ -65,15 +65,15 @@ class ZephyraCoQADataset(Dataset):
 
     @staticmethod
     def collate_fn(batch):
-        # Find max length in the batch
+
         max_len = max(len(item['input_ids']) for item in batch)
 
-        # Pad all tensors to max_len
+
         input_ids = torch.stack([torch.cat([item['input_ids'], torch.full((max_len - len(item['input_ids']),), item['input_ids'][-1], dtype=torch.long)]) for item in batch])
         attention_mask = torch.stack([torch.cat([item['attention_mask'], torch.zeros(max_len - len(item['attention_mask']), dtype=torch.long)]) for item in batch])
         labels = torch.stack([torch.cat([item['labels'], torch.full((max_len - len(item['labels']),), -100, dtype=torch.long)]) for item in batch])
 
-        # print(f"Collated shapes - Input: {input_ids.shape}, Attention: {attention_mask.shape}, Labels: {labels.shape}")
+
 
         return {
             'input_ids': input_ids,

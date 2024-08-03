@@ -3,6 +3,7 @@ import torch.nn as nn
 from .embeddings import ZephyraEmbeddings
 from .layers import ZephyraEncoder
 
+# For pretrained weights
 class ZephyraPreTrainedModel(nn.Module):
     def __init__(self, config):
         super().__init__()
@@ -46,7 +47,7 @@ class ZephyraPreTrainedModel(nn.Module):
     def post_init(self):
         self.apply(self._init_weights)
         self.tie_weights()
-
+# Base model
 class ZephyraModel(ZephyraPreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
@@ -109,7 +110,8 @@ class ZephyraModel(ZephyraPreTrainedModel):
         )
 
         return encoder_outputs
-    
+
+# For soecific purpose
 class ZephyraForQuestionAnswering(ZephyraPreTrainedModel):
     def __init__(self, config):
         super().__init__(config)

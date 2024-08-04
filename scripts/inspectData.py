@@ -42,7 +42,7 @@ def analyze_dataset(dataset_path, max_len, vocab_size):
         all_input_lengths.append(len(sample['input_ids']))
         all_target_lengths.append(len(sample['target_ids']))
     
-    print("\nOverall statistics:")
+    print("\nOverall dataset stats:")
     print(f"  Input lengths:")
     print(f"    Min: {min(all_input_lengths)}")
     print(f"    Max: {max(all_input_lengths)}")

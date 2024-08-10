@@ -35,10 +35,7 @@ def apply_rotary_pos_emb(q, k, cos, sin):
     k_embed = (k * cos) + (rotate_half(k) * sin)
     return q_embed, k_embed
 
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import math
+
 
 class MultiQueryAttention(nn.Module):
     def __init__(self, config):

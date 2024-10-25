@@ -1,6 +1,6 @@
 # Zephyra
 
-## UNAVAILABLE CURRENTLY: Zephyra is undergoing some major changes and will be updated very soon :) 😁<EOS> 
+## UNAVAILABLE CURRENTLY: Zephyra is undergoing some major changes and will be updated very soon :) <|EOS|>
 
 Zephyra is a from-scratch implementation of a large language model (LLM) tailored for question-answering and chat tasks. This project demonstrates the fundamentals of building and training a transformer-based model, encompassing various stages of data processing, unique model architecture, training, and evaluation.
 
